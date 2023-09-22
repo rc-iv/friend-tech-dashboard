@@ -123,7 +123,7 @@ const StreamTable: React.FC = () => {
               subject: returnValues.subject,
               transactionType: returnValues.isBuy ? "Buy" : "Sell",
               shareAmount: returnValues.shareAmount.toString(),
-              ethAmount: (Number(returnValues.ethAmount) / 1e18).toFixed(7),
+              ethAmount: ethAbs.toString(),
               timestamp,
               transactionHash,
               colorGradient,
