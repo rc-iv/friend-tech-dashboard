@@ -48,10 +48,21 @@ interface User {
   lifetimeFeesCollectedInWei: string;
 }
 
+// Define a new interface for Portfolio containing holdings and portfolioValueEth
+interface Portfolio {
+  holdings: User[];
+  portfolioValueETH: string;
+}
+
 const StreamTable: React.FC = () => {
   const [events, setEvents] = useState<TradeEvent[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
+
   const [subjectInfo, setSubjectInfo] = useState<Record<string, User>>({});
   const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
+  const [portfolioInfo, setPortfolioInfo] = useState<Record<string, Portfolio>>(
+    {}
+  );
   const { walletAddress } = useWallet();
 
   const fetchKosettoUserInfo = async (
@@ -86,6 +97,51 @@ const StreamTable: React.FC = () => {
     }
   };
 
+  // New function to fetch user token holdings and display prices
+  const fetchKosettoPortfolioInfo = async (
+    address: string,
+    target: "subject" | "trader"
+  ) => {
+    try {
+      const res = await fetch(
+        `https://prod-api.kosetto.com/users/${address}/token-holdings`
+      );
+      const data = await res.json();
+
+      let portfolioValueETH = 0; // Initialize portfolio value
+
+      const holdingsWithPrice = await Promise.all(
+        data.users.map(async (holding: any) => {
+          const resPrice = await fetch(
+            `https://prod-api.kosetto.com/users/${holding.address}`
+          );
+          const dataPrice = await resPrice.json();
+          const displayPrice = parseFloat(dataPrice.displayPrice); // Convert to Number
+          const balance = parseFloat(holding.balance); // Convert to Number
+
+          // Calculate the total value for this holding and add it to the portfolio value
+          const totalValueForHolding = (displayPrice * balance) / 1e18; // Assuming Wei to ETH conversion
+          portfolioValueETH += totalValueForHolding;
+
+          return {
+            ...holding,
+            displayPrice: dataPrice.displayPrice, // Store as string
+          };
+        })
+      );
+
+      setPortfolioInfo((prevInfo) => ({
+        ...prevInfo,
+        [address]: {
+          holdings: holdingsWithPrice,
+          portfolioValueETH: portfolioValueETH.toFixed(2), // Store as string, up to 7 decimal places
+        },
+      }));
+    } catch (error) {
+      console.error("Error fetching token holdings:", error);
+    }
+  };
+
   useEffect(() => {
     if (!walletAddress) return;
 
@@ -110,7 +166,9 @@ const StreamTable: React.FC = () => {
               Number(block.timestamp) * 1000
             ).toLocaleTimeString();
             fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
-            fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
+            fetchKosettoUserInfo(returnValues.trader, "trader");
+            fetchKosettoPortfolioInfo(returnValues.subject, "subject");
+            fetchKosettoPortfolioInfo(returnValues.trader, "trader");
 
             let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
             let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
@@ -144,12 +202,11 @@ const StreamTable: React.FC = () => {
         );
 
         const filteredEvents = newEvents.filter((event) => event !== null);
-        setEvents((prevEvents) => {
-          // Combine the new events with the previous ones
-          const combinedEvents = [...(filteredEvents as TradeEvent[]), ...prevEvents];
-          // Slice the array to only keep the most recent 100 events
-          return combinedEvents.slice(0, 100);
-        });
+        // Update pendingEvents instead of events directly
+        setPendingEvents((prevPendingEvents) => [
+          ...prevPendingEvents,
+          ...filteredEvents,
+        ]);
       } catch (error) {
         console.error("Error fetching events:", error);
       }
@@ -160,6 +217,25 @@ const StreamTable: React.FC = () => {
 
     return () => clearInterval(poll);
   }, [walletAddress]);
+
+  // useeffect hook to move pending events to events
+  // New useEffect for moving fully loaded events from pendingEvents to events
+  useEffect(() => {
+    const fullyLoadedEvents = pendingEvents.filter((event) => {
+      return subjectInfo[event.subject] && traderInfo[event.trader];
+    });
+
+    if (fullyLoadedEvents.length > 0) {
+      setEvents((prevEvents) => {
+        const combinedEvents = [...fullyLoadedEvents, ...prevEvents];
+        return combinedEvents.slice(0, 100);
+      });
+
+      setPendingEvents((prevPendingEvents) =>
+        prevPendingEvents.filter((event) => !fullyLoadedEvents.includes(event))
+      );
+    }
+  }, [pendingEvents, subjectInfo, traderInfo]);
 
   return (
     <div className="flex flex-col text-white bg-black">
@@ -186,6 +262,12 @@ const StreamTable: React.FC = () => {
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Trader
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Trader Portfolio Value
                   </th>
                   <th
                     scope="col"
@@ -263,7 +345,7 @@ const StreamTable: React.FC = () => {
                                 <img
                                   className="rounded-full"
                                   src={traderInfo[event.trader]?.twitterPfpUrl}
-                                  alt="Friend Tech Account"
+                                  alt="X Avatar"
                                   width="48"
                                   height="48"
                                 />
@@ -287,6 +369,9 @@ const StreamTable: React.FC = () => {
                         </a>
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {portfolioInfo[event.trader]?.portfolioValueETH + "ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {/* Display Twitter Username if available */}
                         {subjectInfo[event.subject]?.twitterUsername && (
                           <div className="flex">
@@ -300,7 +385,7 @@ const StreamTable: React.FC = () => {
                               <img
                                 className="rounded-full"
                                 src={subjectInfo[event.subject]?.twitterPfpUrl}
-                                alt="Friend Tech Account"
+                                alt="X Avatar"
                                 width="48"
                                 height="48"
                               />
