@@ -113,7 +113,7 @@ const StreamTable: React.FC = () => {
 
             if (ethAbs < 0.01) {
               colorGradient = "300";
-            } else if (ethAbs < 0.1) {
+            } else if (ethAbs < 0.3) {
               colorGradient = "500";
             } else {
               colorGradient = "900";
