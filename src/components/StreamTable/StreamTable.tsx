@@ -5,6 +5,7 @@ import { useWallet } from "../WalletContext/WalletContext"; // adjust the import
 import logoEther from "../../assets/images/ether-logo.png";
 import logoFtech from "../../assets/images/ftech-logo.png";
 import logoX from "../../assets/images/X-Logo.png";
+import { timeStamp } from "console";
 
 const colorMap = {
   green: {
@@ -95,15 +96,19 @@ const StreamTable: React.FC = () => {
 
         const newEvents = await Promise.all(
           pastEvents.map(async (event: any) => {
+            let timestamp;
             const { returnValues, blockNumber, transactionHash } = event;
             const block = await web3.eth.getBlock(blockNumber);
-            const timestamp = new Date(
-              Number(block.timestamp) * 1000
-            ).toLocaleTimeString();
-            fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
-            fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
-
-
+            try {
+              timestamp = new Date(
+                Number(block.timestamp) * 1000
+              ).toLocaleTimeString();
+              fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
+              fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
+            } catch (error) {
+              console.error("Error fetching events:", error);
+              return null;
+            }
             // let ethAmountBigInt = returnValues.ethAmount;
             // // Convert the BigInt to a string
             // let ethAmountString = ethAmountBigInt.toString();
@@ -140,7 +145,7 @@ const StreamTable: React.FC = () => {
               transactionType: returnValues.isBuy ? "Buy" : "Sell",
               shareAmount: returnValues.shareAmount.toString(),
               ethAmount: returnValues.ethAmount.toString(),
-              timestamp,
+              timestamp: timestamp ? timestamp : "N/A",
               transactionHash,
               colorGradient,
             };
