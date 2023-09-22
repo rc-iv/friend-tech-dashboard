@@ -103,11 +103,29 @@ const StreamTable: React.FC = () => {
             fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
             fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
 
-            let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
-            let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
-            let ethAbs = Math.abs(
-              parseFloat((ethAmountNumber / 1e18).toFixed(7))
-            );
+            // Convert 1e18 to BigInt
+            const divisor = BigInt("1000000000000000000");
+
+            // Assuming returnValues.ethAmount is a BigInt
+            let ethAmountBigInt = returnValues.ethAmount;
+
+            // Convert the BigInt to a string
+            let ethAmountString = ethAmountBigInt.toString();
+
+            // Add leading zeros if necessary to make sure it's at least 18 digits long
+            while (ethAmountString.length <= 18) {
+              ethAmountString = "0" + ethAmountString;
+            }
+
+            // Separate the whole and fractional parts
+            let wholePart = ethAmountString.slice(0, -18);
+            // fractional part should go 4 decimal places
+            let fractionalPart = ethAmountString.slice(-18, -14);
+
+            // Concatenate to get the decimal number as a string
+            let ethAbsString = `${wholePart}.${fractionalPart}`;
+            let ethAbs = Number(ethAbsString);
+            console.log(`ethAbsString: ${ethAbsString}`);
 
             if (ethAbs == 0) {
               return null;
@@ -126,7 +144,7 @@ const StreamTable: React.FC = () => {
               subject: returnValues.subject,
               transactionType: returnValues.isBuy ? "Buy" : "Sell",
               shareAmount: returnValues.shareAmount.toString(),
-              ethAmount: ethAbs.toString(),
+              ethAmount: ethAbsString,
               timestamp,
               transactionHash,
               colorGradient,
@@ -160,13 +178,13 @@ const StreamTable: React.FC = () => {
                 <tr>
                   <th
                     scope="col"
-                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     TXN
                   </th>
                   <th
                     scope="col"
-                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Timestamp
                   </th>
@@ -184,13 +202,13 @@ const StreamTable: React.FC = () => {
                   </th>
                   <th
                     scope="col"
-                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Transaction Type
                   </th>
                   <th
                     scope="col"
-                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Share Amount
                   </th>
@@ -198,7 +216,7 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    ETH Amount
+                    ETH
                   </th>
                 </tr>
               </thead>
@@ -215,7 +233,7 @@ const StreamTable: React.FC = () => {
                         (colorMap[baseColor] as any)[event.colorGradient]
                       }
                     >
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                         <a
                           href={`https://basescan.org/tx/${event.transactionHash}`}
                           target="_blank"
@@ -230,7 +248,7 @@ const StreamTable: React.FC = () => {
                           />
                         </a>
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {event.timestamp}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
@@ -311,10 +329,10 @@ const StreamTable: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {event.transactionType}
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {event.shareAmount}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
