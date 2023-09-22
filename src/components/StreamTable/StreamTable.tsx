@@ -103,9 +103,12 @@ const StreamTable: React.FC = () => {
             fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
             fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
 
+            let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
+            let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
             let ethAbs = Math.abs(
-              parseFloat((parseFloat(returnValues.ethAmount.toString()) / 1e18).toFixed(7))
+              parseFloat((ethAmountNumber / 1e18).toFixed(7))
             );
+
             if (ethAbs == 0) {
               return null;
             }
