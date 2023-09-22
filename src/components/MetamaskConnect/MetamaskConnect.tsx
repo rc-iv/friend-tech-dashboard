@@ -34,7 +34,6 @@ const MetamaskConnect: React.FC = () => {
     <div>
       {walletAddress ? (
         <>
-          <p>Connected to {walletAddress}</p>
           <button onClick={disconnectWallet}>Disconnect Metamask</button>
         </>
       ) : (
