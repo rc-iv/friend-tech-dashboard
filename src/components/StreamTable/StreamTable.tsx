@@ -103,48 +103,43 @@ const StreamTable: React.FC = () => {
             fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
             fetchKosettoUserInfo(returnValues.trader, "trader"); // Fetch additional info for each trader
 
-            // Convert 1e18 to BigInt
-            const divisor = BigInt("1000000000000000000");
 
-            // Assuming returnValues.ethAmount is a BigInt
-            let ethAmountBigInt = returnValues.ethAmount;
+            // let ethAmountBigInt = returnValues.ethAmount;
+            // // Convert the BigInt to a string
+            // let ethAmountString = ethAmountBigInt.toString();
+            // // Add leading zeros if necessary to make sure it's at least 18 digits long
+            // while (ethAmountString.length <= 18) {
+            //   ethAmountString = "0" + ethAmountString;
+            // }
 
-            // Convert the BigInt to a string
-            let ethAmountString = ethAmountBigInt.toString();
+            // // Separate the whole and fractional parts
+            // let wholePart = ethAmountString.slice(0, -18);
+            // // fractional part should go 4 decimal places
+            // let fractionalPart = ethAmountString.slice(-18, -14);
 
-            // Add leading zeros if necessary to make sure it's at least 18 digits long
-            while (ethAmountString.length <= 18) {
-              ethAmountString = "0" + ethAmountString;
-            }
+            // // Concatenate to get the decimal number as a string
+            // let ethAbsString = `${wholePart}.${fractionalPart}`;
+            // let ethAbs = Number(ethAbsString);
+            // console.log(`ethAbsString: ${ethAbsString}`);
 
-            // Separate the whole and fractional parts
-            let wholePart = ethAmountString.slice(0, -18);
-            // fractional part should go 4 decimal places
-            let fractionalPart = ethAmountString.slice(-18, -14);
-
-            // Concatenate to get the decimal number as a string
-            let ethAbsString = `${wholePart}.${fractionalPart}`;
-            let ethAbs = Number(ethAbsString);
-            console.log(`ethAbsString: ${ethAbsString}`);
-
-            if (ethAbs == 0) {
-              return null;
-            }
+            // if (ethAbs == 0) {
+            //   return null;
+            // }
             let colorGradient = "500"; // Default value
 
-            if (ethAbs < 0.01) {
-              colorGradient = "300";
-            } else if (ethAbs < 0.3) {
-              colorGradient = "500";
-            } else {
-              colorGradient = "900";
-            }
+            // if (ethAbs < 0.01) {
+            //   colorGradient = "300";
+            // } else if (ethAbs < 0.3) {
+            //   colorGradient = "500";
+            // } else {
+            //   colorGradient = "900";
+            // }
             return {
               trader: returnValues.trader,
               subject: returnValues.subject,
               transactionType: returnValues.isBuy ? "Buy" : "Sell",
               shareAmount: returnValues.shareAmount.toString(),
-              ethAmount: ethAbsString,
+              ethAmount: returnValues.ethAmount.toString(),
               timestamp,
               transactionHash,
               colorGradient,
