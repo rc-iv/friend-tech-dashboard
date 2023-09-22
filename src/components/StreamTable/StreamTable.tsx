@@ -59,6 +59,15 @@ const StreamTable: React.FC = () => {
     target: "subject" | "trader"
   ) => {
     try {
+      // Check if the user info for this address has already been fetched
+      const alreadyFetched =
+        (target === "trader" && traderInfo[address]) ||
+        (target === "subject" && subjectInfo[address]);
+
+      if (alreadyFetched) {
+        return; // Skip fetching if already fetched
+      }
+
       const res = await fetch(`https://prod-api.kosetto.com/users/${address}`);
       const data = await res.json();
       if (target === "trader")
@@ -135,10 +144,12 @@ const StreamTable: React.FC = () => {
         );
 
         const filteredEvents = newEvents.filter((event) => event !== null);
-        setEvents((prevEvents) => [
-          ...(filteredEvents as TradeEvent[]),
-          ...prevEvents,
-        ]);
+        setEvents((prevEvents) => {
+          // Combine the new events with the previous ones
+          const combinedEvents = [...(filteredEvents as TradeEvent[]), ...prevEvents];
+          // Slice the array to only keep the most recent 100 events
+          return combinedEvents.slice(0, 100);
+        });
       } catch (error) {
         console.error("Error fetching events:", error);
       }
