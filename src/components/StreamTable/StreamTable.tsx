@@ -126,7 +126,7 @@ const StreamTable: React.FC = () => {
       const allHoldings = [...accumulatedHoldings, ...users];
 
       // Recursively fetch more data if nextPageStart is divisible by 50
-      if (nextPageStart % 50 === 0) {
+      if (nextPageStart % 50 === 0 && nextPageStart < 300) {
         return await fetchKosettoPortfolioInfo(
           address,
           target,
