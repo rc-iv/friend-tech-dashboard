@@ -65,6 +65,15 @@ const StreamTable: React.FC = () => {
   );
   const { walletAddress } = useWallet();
 
+  // filters
+  const [ethFilter, setEthFilter] = useState<number | null>(null);
+  const [traderPortfolioFilter, setTraderPortfolioFilter] = useState<
+    number | null
+  >(null);
+  const [selfBuyFilter, setSelfBuyFilter] = useState<boolean>(false);
+  const [firstBuyFilter, setFirstBuyFilter] = useState<boolean>(false);
+  const [selfSellFilter, setSelfSellFilter] = useState<boolean>(false);
+
   const fetchKosettoUserInfo = async (
     address: string,
     target: "subject" | "trader"
@@ -97,21 +106,39 @@ const StreamTable: React.FC = () => {
     }
   };
 
-  // New function to fetch user token holdings and display prices
-  const fetchKosettoPortfolioInfo = async (
+  // Function to fetch user token holdings and display prices
+  const fetchKosettoPortfolioInfo: any = async (
     address: string,
-    target: "subject" | "trader"
+    target: "subject" | "trader",
+    pageStart: number = 0, // New parameter to control pagination
+    accumulatedHoldings: any[] = [] // New parameter to accumulate results
   ) => {
     try {
-      const res = await fetch(
-        `https://prod-api.kosetto.com/users/${address}/token-holdings`
-      );
+      // Use pageStart in the API call if it's greater than 0
+      const url = `https://prod-api.kosetto.com/users/${address}/token-holdings${
+        pageStart > 0 ? `?pageStart=${pageStart}` : ""
+      }`;
+      const res = await fetch(url);
       const data = await res.json();
+      let { users, nextPageStart } = data;
+
+      // Accumulate results
+      const allHoldings = [...accumulatedHoldings, ...users];
+
+      // Recursively fetch more data if nextPageStart is divisible by 50
+      if (nextPageStart % 50 === 0) {
+        return await fetchKosettoPortfolioInfo(
+          address,
+          target,
+          nextPageStart,
+          allHoldings
+        );
+      }
 
       let portfolioValueETH = 0; // Initialize portfolio value
 
       const holdingsWithPrice = await Promise.all(
-        data.users.map(async (holding: any) => {
+        allHoldings.map(async (holding: any) => {
           const resPrice = await fetch(
             `https://prod-api.kosetto.com/users/${holding.address}`
           );
@@ -150,7 +177,7 @@ const StreamTable: React.FC = () => {
     const web3 = new Web3(providerUrl);
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
-    const pollInterval = 5000;
+    const pollInterval = 15000;
 
     const fetchEvents = async () => {
       try {
@@ -182,9 +209,9 @@ const StreamTable: React.FC = () => {
             let colorGradient = "500"; // Default value
 
             if (ethAbs < 0.01) {
-              colorGradient = "300";
-            } else if (ethAbs < 0.3) {
               colorGradient = "500";
+            } else if (ethAbs < 0.3) {
+              colorGradient = "700";
             } else {
               colorGradient = "900";
             }
@@ -237,8 +264,96 @@ const StreamTable: React.FC = () => {
     }
   }, [pendingEvents, subjectInfo, traderInfo]);
 
+  let filteredEvents = events;
+
+  let conditions: Array<(event: TradeEvent) => boolean> = [];
+
+  if (ethFilter) {
+    conditions.push((event) => parseFloat(event.ethAmount) >= ethFilter);
+  }
+
+  if (traderPortfolioFilter) {
+    conditions.push((event) => {
+      const portfolioValue = parseFloat(
+        portfolioInfo[event.trader]?.portfolioValueETH || "0"
+      );
+      return portfolioValue >= traderPortfolioFilter;
+    });
+  }
+
+  if (selfBuyFilter && selfSellFilter) {
+    conditions.push((event) => event.trader === event.subject);
+  } else {
+    if (selfBuyFilter) {
+      conditions.push(
+        (event) =>
+          event.trader === event.subject && event.transactionType === "Buy"
+      );
+    }
+
+    if (selfSellFilter) {
+      conditions.push(
+        (event) =>
+          event.trader === event.subject && event.transactionType === "Sell"
+      );
+    }
+  }
+
+  if (firstBuyFilter) {
+    conditions.push((event) => {
+      const subjectShareSupply = parseFloat(
+        subjectInfo[event.subject]?.shareSupply || "0"
+      );
+      return subjectShareSupply === 1;
+    });
+  }
+
+  filteredEvents = filteredEvents.filter((event) =>
+    conditions.every((condition) => condition(event))
+  );
+
   return (
     <div className="flex flex-col text-white bg-black">
+      <span className="mx-4">Portfolio Value Filter:</span>
+      <input
+        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+        type="number"
+        placeholder="Filter by Portfolio Value"
+        onChange={(e) => setTraderPortfolioFilter(parseFloat(e.target.value))}
+      />
+      <span className="mx-4">Transaction Value Filter:</span>
+      <input
+        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+        type="number"
+        placeholder="Filter by ETH"
+        onChange={(e) => setEthFilter(parseFloat(e.target.value))}
+      />
+      <div className="flex">
+        <label className="m-4 flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={selfBuyFilter}
+            onChange={() => setSelfBuyFilter(!selfBuyFilter)}
+          />
+          <span>Self Buy</span>
+        </label>
+        <label className="m-4 flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={selfSellFilter}
+            onChange={() => setSelfSellFilter(!selfSellFilter)}
+          />
+          <span>Self Sell</span>
+        </label>
+        <label className="m-4 flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={firstBuyFilter}
+            onChange={() => setFirstBuyFilter(!firstBuyFilter)}
+          />
+          <span>First Buy (Supply = 1)</span>
+        </label>
+      </div>
       <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
           <div className="overflow-hidden border border-gray-200 dark:border-gray-700 md:rounded-lg">
@@ -296,7 +411,7 @@ const StreamTable: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
-                {events.map((event, index) => {
+                {filteredEvents.map((event, index) => {
                   // Determine base color based on transaction type
                   const baseColor =
                     event.transactionType === "Buy" ? "green" : "red";
@@ -363,7 +478,7 @@ const StreamTable: React.FC = () => {
                                   height="48"
                                 />
                               </a>
-                              {traderInfo[event.trader]?.twitterUsername}
+                              {traderInfo[event.trader]?.twitterName}
                             </div>
                           )}
                         </a>
@@ -403,7 +518,7 @@ const StreamTable: React.FC = () => {
                                 height="48"
                               />
                             </a>
-                            {subjectInfo[event.subject]?.twitterUsername}
+                            {subjectInfo[event.subject]?.twitterName}
                           </div>
                         )}
                       </td>
