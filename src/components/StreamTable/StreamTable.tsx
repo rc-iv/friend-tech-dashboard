@@ -439,7 +439,7 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Purchase Amount
+                    TXN Amount
                   </th>
                   <th
                     scope="col"
