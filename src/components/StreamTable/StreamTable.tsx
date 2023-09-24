@@ -292,7 +292,7 @@ const StreamTable: React.FC = () => {
   return (
     <div className="flex flex-col text-white bg-black">
       {/*filters*/}
-      <div className="flex justify-between">
+      <div className="invisible md:visible flex justify-between">
         {/* trader filter*/}
         <div className="flex flex-col items-start">
           <div className="flex items-center">
