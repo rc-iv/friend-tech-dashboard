@@ -64,16 +64,24 @@ const StreamTable: React.FC = () => {
   const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
   const { walletAddress } = useWallet();
 
-  // filters
+  /* Filters */
   const [ethFilter, setEthFilter] = useState<number | null>(null);
+
+  const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
   const [traderPortfolioFilter, setTraderPortfolioFilter] = useState<
     number | null
   >(null);
+
+  const [subjectETHFilter, setSubjectETHFilter] = useState<number | null>(null);
+  const [subjectPortfolioFilter, setSubjectPortfolioFilter] = useState<
+    number | null
+  >(null);
+
   const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
   const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
-  const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
-  const [selectedTab, setSelectedTab] = useState<string>("All");
 
+  const [selectedTab, setSelectedTab] = useState<string>("All");
+  /* End Filters */
   const handleTabClick = (tab: "Buy" | "Sell" | "All") => {
     setSelectedTab(tab);
   };
@@ -159,7 +167,7 @@ const StreamTable: React.FC = () => {
             }
             let colorGradient = "500"; // Default value
 
-            if (ethAbs < 0.01) {
+            if (ethAbs < 0.1) {
               colorGradient = "500";
             } else if (ethAbs < 0.3) {
               colorGradient = "700";
@@ -215,6 +223,7 @@ const StreamTable: React.FC = () => {
     }
   }, [pendingEvents, subjectInfo, traderInfo]);
 
+  // Filter events based on selected filters
   let filteredEvents = events;
 
   let conditions: Array<(event: TradeEvent) => boolean> = [];
@@ -245,6 +254,24 @@ const StreamTable: React.FC = () => {
     });
   }
 
+  if (subjectPortfolioFilter) {
+    conditions.push((event) => {
+      const portfolioValue = parseFloat(
+        subjectInfo[event.subject]?.portfolio?.portfolioValueETH || "0"
+      );
+      return portfolioValue >= subjectPortfolioFilter;
+    });
+  }
+
+  if (subjectETHFilter) {
+    conditions.push((event) => {
+      const ethBalance = parseFloat(
+        subjectInfo[event.subject]?.ethBalance || "0"
+      );
+      return ethBalance >= subjectETHFilter;
+    });
+  }
+
   if (selfTxnFilter) {
     conditions.push((event) => event.trader === event.subject);
   }
@@ -264,44 +291,87 @@ const StreamTable: React.FC = () => {
 
   return (
     <div className="flex flex-col text-white bg-black">
-      <span className="mx-4">Trader Portfolio Value:</span>
-      <input
-        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
-        type="number"
-        placeholder="Filter by Portfolio Value"
-        onChange={(e) => setTraderPortfolioFilter(parseFloat(e.target.value))}
-      />
-      <span className="mx-4">Trader ETH Balance:</span>
-      <input
-        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
-        type="number"
-        placeholder="Filter by Portfolio Value"
-        onChange={(e) => setTraderETHFilter(parseFloat(e.target.value))}
-      />
-      <span className="mx-4">Transaction Value:</span>
-      <input
-        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
-        type="number"
-        placeholder="Filter by ETH"
-        onChange={(e) => setEthFilter(parseFloat(e.target.value))}
-      />
-      <div className="flex">
-        <label className="m-4 flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={selfTxnFilter}
-            onChange={() => setSelfTxnFilter(!selfTxnFilter)}
-          />
-          <span>Self Txn</span>
-        </label>
-        <label className="m-4 flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={supplyOneFilter}
-            onChange={() => setSupplyOneFilter(!supplyOneFilter)}
-          />
-          <span>Supply = 1</span>
-        </label>
+      {/*filters*/}
+      <div className="flex justify-between">
+        {/* trader filter*/}
+        <div className="flex flex-col items-start">
+          <div className="flex items-center">
+            <span className="mx-2">Trader Portfolio:</span>
+            <input
+              className="w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by Portfolio Value"
+              onChange={(e) =>
+                setTraderPortfolioFilter(parseFloat(e.target.value))
+              }
+            />
+          </div>
+          <div className="flex items-center">
+            <span className="mx-2">Trader ETH:</span>
+            <input
+              className="ml-8 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by ETH balance"
+              onChange={(e) => setTraderETHFilter(parseFloat(e.target.value))}
+            />
+          </div>
+        </div>
+        {/* general filters */}
+        <div className="flex flex-col items-center">
+          <div className="flex items-center">
+            <span className="mx-4">Purchase Amount:</span>
+            <input
+              className="w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by ETH"
+              onChange={(e) => setEthFilter(parseFloat(e.target.value))}
+            />
+          </div>
+          {/* checkbox filters */}
+          <div className="flex justify-between">
+            <div className="flex">
+              <label className="m-4 flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selfTxnFilter}
+                  onChange={() => setSelfTxnFilter(!selfTxnFilter)}
+                />
+                <span>Self Txn</span>
+              </label>
+              <label className="m-4 flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={supplyOneFilter}
+                  onChange={() => setSupplyOneFilter(!supplyOneFilter)}
+                />
+                <span>Supply = 1</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        {/* subject filter */}
+        <div className="flex flex-col items-end">
+          <div className="flex items-center">
+            <span className="mx-4">Subject Portfolio:</span>
+            <input
+              className="mx-2 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by Portfolio Value"
+              onChange={(e) =>
+                setSubjectPortfolioFilter(parseFloat(e.target.value))
+              }
+            />
+          </div>
+          <div className="flex items-center">
+            <span className="mx-4">Subject ETH:</span>
+            <input
+              className="mx-2 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by ETH Balance"
+              onChange={(e) => setSubjectETHFilter(parseFloat(e.target.value))}
+            />
+          </div>
+        </div>
       </div>
       <div className="flex justify-center">
         <button
@@ -351,13 +421,13 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Trader ETH Balance
+                    Trader ETH Bal
                   </th>
                   <th
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Trader Portfolio Value
+                    Trader Portfolio
                   </th>
                   <th
                     scope="col"
@@ -381,13 +451,13 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Subject Portfolio Balance
+                    Subject Portfolio
                   </th>
                   <th
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Subject ETH Balance
+                    Subject ETH Bal
                   </th>
                 </tr>
               </thead>
@@ -415,8 +485,8 @@ const StreamTable: React.FC = () => {
                               className="rounded-full"
                               src={logoEther}
                               alt="Transaction Hash"
-                              width="36"
-                              height="36"
+                              width="24"
+                              height="24"
                             />
                           </a>
                           {event.timestamp}
@@ -446,11 +516,11 @@ const StreamTable: React.FC = () => {
                                 rel="noopener noreferrer"
                               >
                                 <img
-                                  className="rounded-full"
+                                  className="rounded-full mr-1"
                                   src={traderInfo[event.trader]?.twitterPfpUrl}
                                   alt="X Avatar"
-                                  width="36"
-                                  height="36"
+                                  width="24"
+                                  height="24"
                                 />
                               </a>
                               <a
@@ -468,7 +538,7 @@ const StreamTable: React.FC = () => {
                         </a>
                       </td>
                       <td className="px-4 py-4 text-xl text-sm font-medium whitespace-nowrap">
-                        {event.ethAmount}
+                        {event.ethAmount.slice(0, 7)}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {/* Display Twitter Username if available */}
@@ -482,11 +552,11 @@ const StreamTable: React.FC = () => {
                               rel="noopener noreferrer"
                             >
                               <img
-                                className="rounded-full"
+                                className="rounded-full mr-1"
                                 src={subjectInfo[event.subject]?.twitterPfpUrl}
                                 alt="X Avatar"
-                                width="36"
-                                height="36"
+                                width="24"
+                                height="24"
                               />
                             </a>
                             <a
