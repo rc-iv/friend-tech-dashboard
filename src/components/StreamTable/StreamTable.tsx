@@ -46,6 +46,8 @@ interface User {
   shareSupply: string;
   displayPrice: string;
   lifetimeFeesCollectedInWei: string;
+  portfolio: Portfolio;
+  ethBalance?: string;
 }
 
 // Define a new interface for Portfolio containing holdings and portfolioValueEth
@@ -60,9 +62,6 @@ const StreamTable: React.FC = () => {
 
   const [subjectInfo, setSubjectInfo] = useState<Record<string, User>>({});
   const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
-  const [portfolioInfo, setPortfolioInfo] = useState<Record<string, Portfolio>>(
-    {}
-  );
   const { walletAddress } = useWallet();
 
   // filters
@@ -73,8 +72,13 @@ const StreamTable: React.FC = () => {
   const [selfBuyFilter, setSelfBuyFilter] = useState<boolean>(false);
   const [firstBuyFilter, setFirstBuyFilter] = useState<boolean>(false);
   const [selfSellFilter, setSelfSellFilter] = useState<boolean>(false);
+  const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
 
-  const fetchKosettoUserInfo = async (
+  const providerUrl =
+    "https://base.blockpi.network/v1/rpc/8bfe5dae92f901117832b75d348793bda33fe2a5";
+  const web3 = new Web3(providerUrl);
+
+  const fetchUserInfo = async (
     address: string,
     target: "subject" | "trader"
   ) => {
@@ -88,17 +92,27 @@ const StreamTable: React.FC = () => {
         return; // Skip fetching if already fetched
       }
 
-      const res = await fetch(`https://prod-api.kosetto.com/users/${address}`);
-      const data = await res.json();
+      // user web3 to fetch eth balance of address
+      const weiBalance = await web3.eth.getBalance(address);
+      // convert to eth
+      const ethBalanceString = web3.utils.fromWei(weiBalance, "ether");
+      // truncate to 2 decimal places
+      const ethBalance = parseFloat(ethBalanceString).toFixed(2);
+
+      const url = `https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/user/${address}`;
+      const response = await fetch(url);
+      const user = await response.json();
+      const userData = user.userData;
+      userData.ethBalance = ethBalance;
       if (target === "trader")
         setTraderInfo((prevInfo) => ({
           ...prevInfo,
-          [address]: data,
+          [address]: userData,
         }));
       else {
         setSubjectInfo((prevInfo) => ({
           ...prevInfo,
-          [address]: data,
+          [address]: userData,
         }));
       }
     } catch (error) {
@@ -106,78 +120,13 @@ const StreamTable: React.FC = () => {
     }
   };
 
-  // Function to fetch user token holdings and display prices
-  const fetchKosettoPortfolioInfo: any = async (
-    address: string,
-    target: "subject" | "trader",
-    pageStart: number = 0, // New parameter to control pagination
-    accumulatedHoldings: any[] = [] // New parameter to accumulate results
-  ) => {
-    try {
-      // Use pageStart in the API call if it's greater than 0
-      const url = `https://prod-api.kosetto.com/users/${address}/token-holdings${
-        pageStart > 0 ? `?pageStart=${pageStart}` : ""
-      }`;
-      const res = await fetch(url);
-      const data = await res.json();
-      let { users, nextPageStart } = data;
-
-      // Accumulate results
-      const allHoldings = [...accumulatedHoldings, ...users];
-
-      // Recursively fetch more data if nextPageStart is divisible by 50
-      if (nextPageStart % 50 === 0 && nextPageStart < 300) {
-        return await fetchKosettoPortfolioInfo(
-          address,
-          target,
-          nextPageStart,
-          allHoldings
-        );
-      }
-
-      let portfolioValueETH = 0; // Initialize portfolio value
-
-      const holdingsWithPrice = await Promise.all(
-        allHoldings.map(async (holding: any) => {
-          const resPrice = await fetch(
-            `https://prod-api.kosetto.com/users/${holding.address}`
-          );
-          const dataPrice = await resPrice.json();
-          const displayPrice = parseFloat(dataPrice.displayPrice); // Convert to Number
-          const balance = parseFloat(holding.balance); // Convert to Number
-
-          // Calculate the total value for this holding and add it to the portfolio value
-          const totalValueForHolding = (displayPrice * balance) / 1e18; // Assuming Wei to ETH conversion
-          portfolioValueETH += totalValueForHolding;
-
-          return {
-            ...holding,
-            displayPrice: dataPrice.displayPrice, // Store as string
-          };
-        })
-      );
-
-      setPortfolioInfo((prevInfo) => ({
-        ...prevInfo,
-        [address]: {
-          holdings: holdingsWithPrice,
-          portfolioValueETH: portfolioValueETH.toFixed(2), // Store as string, up to 7 decimal places
-        },
-      }));
-    } catch (error) {
-      console.error("Error fetching token holdings:", error);
-    }
-  };
-
   useEffect(() => {
     if (!walletAddress) return;
-
-    const providerUrl =
-      "https://base.blockpi.network/v1/rpc/8bfe5dae92f901117832b75d348793bda33fe2a5";
-    const web3 = new Web3(providerUrl);
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
-    const pollInterval = 15000;
+    //set poll interval to 3 seconds
+
+    const pollInterval = 10000;
 
     const fetchEvents = async () => {
       try {
@@ -192,10 +141,8 @@ const StreamTable: React.FC = () => {
             const timestamp = new Date(
               Number(block.timestamp) * 1000
             ).toLocaleTimeString();
-            fetchKosettoUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
-            fetchKosettoUserInfo(returnValues.trader, "trader");
-            fetchKosettoPortfolioInfo(returnValues.subject, "subject");
-            fetchKosettoPortfolioInfo(returnValues.trader, "trader");
+            fetchUserInfo(returnValues.subject, "subject"); // Fetch additional info for each subject
+            fetchUserInfo(returnValues.trader, "trader");
 
             let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
             let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
@@ -275,9 +222,16 @@ const StreamTable: React.FC = () => {
   if (traderPortfolioFilter) {
     conditions.push((event) => {
       const portfolioValue = parseFloat(
-        portfolioInfo[event.trader]?.portfolioValueETH || "0"
+        traderInfo[event.trader]?.portfolio?.portfolioValueETH || "0"
       );
       return portfolioValue >= traderPortfolioFilter;
+    });
+  }
+
+  if (traderETHFilter) {
+    conditions.push((event) => {
+      const ethBalance = parseFloat(traderInfo[event.trader]?.ethBalance || "0");
+      return ethBalance >= traderETHFilter;
     });
   }
 
@@ -314,14 +268,21 @@ const StreamTable: React.FC = () => {
 
   return (
     <div className="flex flex-col text-white bg-black">
-      <span className="mx-4">Portfolio Value Filter:</span>
+      <span className="mx-4">Trader Portfolio Value:</span>
       <input
         className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
         type="number"
         placeholder="Filter by Portfolio Value"
         onChange={(e) => setTraderPortfolioFilter(parseFloat(e.target.value))}
       />
-      <span className="mx-4">Transaction Value Filter:</span>
+      <span className="mx-4">Trader ETH Balance:</span>
+      <input
+        className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+        type="number"
+        placeholder="Filter by Portfolio Value"
+        onChange={(e) => setTraderETHFilter(parseFloat(e.target.value))}
+      />
+      <span className="mx-4">Transaction Value:</span>
       <input
         className="mx-4 w-1/4 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
         type="number"
@@ -382,6 +343,12 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
+                    Trader ETH Balance
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
                     Trader Portfolio Value
                   </th>
                   <th
@@ -433,8 +400,8 @@ const StreamTable: React.FC = () => {
                             className="rounded-full"
                             src={logoEther}
                             alt="Transaction Hash"
-                            width="48"
-                            height="48"
+                            width="36"
+                            height="36"
                           />
                         </a>
                       </td>
@@ -461,8 +428,8 @@ const StreamTable: React.FC = () => {
                                   className="rounded-full"
                                   src={traderInfo[event.trader]?.twitterPfpUrl}
                                   alt="X Avatar"
-                                  width="48"
-                                  height="48"
+                                  width="36"
+                                  height="36"
                                 />
                               </a>
                               <a
@@ -474,17 +441,21 @@ const StreamTable: React.FC = () => {
                                   className="rounded-full"
                                   src={logoFtech}
                                   alt="Friend Tech Account"
-                                  width="48"
-                                  height="48"
+                                  width="36"
+                                  height="36"
                                 />
                               </a>
-                              {traderInfo[event.trader]?.twitterName}
+                              {traderInfo[event.trader]?.twitterName.slice(0, 15)}
                             </div>
                           )}
                         </a>
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {portfolioInfo[event.trader]?.portfolioValueETH + "ETH"}
+                        {traderInfo[event.trader]?.ethBalance + " ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {traderInfo[event.trader]?.portfolio?.portfolioValueETH +
+                          " ETH"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {/* Display Twitter Username if available */}
@@ -501,8 +472,8 @@ const StreamTable: React.FC = () => {
                                 className="rounded-full"
                                 src={subjectInfo[event.subject]?.twitterPfpUrl}
                                 alt="X Avatar"
-                                width="48"
-                                height="48"
+                                width="36"
+                                height="36"
                               />
                             </a>
                             <a
@@ -514,11 +485,11 @@ const StreamTable: React.FC = () => {
                                 className="rounded-full"
                                 src={logoFtech}
                                 alt="Friend Tech Account"
-                                width="48"
-                                height="48"
+                                width="36"
+                                height="36"
                               />
                             </a>
-                            {subjectInfo[event.subject]?.twitterName}
+                            {subjectInfo[event.subject]?.twitterName.slice(0,15)}
                           </div>
                         )}
                       </td>
