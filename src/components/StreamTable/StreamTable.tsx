@@ -69,10 +69,14 @@ const StreamTable: React.FC = () => {
   const [traderPortfolioFilter, setTraderPortfolioFilter] = useState<
     number | null
   >(null);
-  const [selfBuyFilter, setSelfBuyFilter] = useState<boolean>(false);
-  const [firstBuyFilter, setFirstBuyFilter] = useState<boolean>(false);
-  const [selfSellFilter, setSelfSellFilter] = useState<boolean>(false);
+  const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
+  const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
   const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
+  const [selectedTab, setSelectedTab] = useState<string>("All");
+
+  const handleTabClick = (tab: "Buy" | "Sell" | "All") => {
+    setSelectedTab(tab);
+  };
 
   const providerUrl =
     "https://base.blockpi.network/v1/rpc/8bfe5dae92f901117832b75d348793bda33fe2a5";
@@ -215,6 +219,10 @@ const StreamTable: React.FC = () => {
 
   let conditions: Array<(event: TradeEvent) => boolean> = [];
 
+  if (selectedTab !== "All") {
+    conditions.push((event) => event.transactionType === selectedTab);
+  }
+
   if (ethFilter) {
     conditions.push((event) => parseFloat(event.ethAmount) >= ethFilter);
   }
@@ -230,30 +238,18 @@ const StreamTable: React.FC = () => {
 
   if (traderETHFilter) {
     conditions.push((event) => {
-      const ethBalance = parseFloat(traderInfo[event.trader]?.ethBalance || "0");
+      const ethBalance = parseFloat(
+        traderInfo[event.trader]?.ethBalance || "0"
+      );
       return ethBalance >= traderETHFilter;
     });
   }
 
-  if (selfBuyFilter && selfSellFilter) {
+  if (selfTxnFilter) {
     conditions.push((event) => event.trader === event.subject);
-  } else {
-    if (selfBuyFilter) {
-      conditions.push(
-        (event) =>
-          event.trader === event.subject && event.transactionType === "Buy"
-      );
-    }
-
-    if (selfSellFilter) {
-      conditions.push(
-        (event) =>
-          event.trader === event.subject && event.transactionType === "Sell"
-      );
-    }
   }
 
-  if (firstBuyFilter) {
+  if (supplyOneFilter) {
     conditions.push((event) => {
       const subjectShareSupply = parseFloat(
         subjectInfo[event.subject]?.shareSupply || "0"
@@ -293,27 +289,51 @@ const StreamTable: React.FC = () => {
         <label className="m-4 flex items-center space-x-2">
           <input
             type="checkbox"
-            checked={selfBuyFilter}
-            onChange={() => setSelfBuyFilter(!selfBuyFilter)}
+            checked={selfTxnFilter}
+            onChange={() => setSelfTxnFilter(!selfTxnFilter)}
           />
-          <span>Self Buy</span>
+          <span>Self Txn</span>
         </label>
         <label className="m-4 flex items-center space-x-2">
           <input
             type="checkbox"
-            checked={selfSellFilter}
-            onChange={() => setSelfSellFilter(!selfSellFilter)}
+            checked={supplyOneFilter}
+            onChange={() => setSupplyOneFilter(!supplyOneFilter)}
           />
-          <span>Self Sell</span>
+          <span>Supply = 1</span>
         </label>
-        <label className="m-4 flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={firstBuyFilter}
-            onChange={() => setFirstBuyFilter(!firstBuyFilter)}
-          />
-          <span>First Buy (Supply = 1)</span>
-        </label>
+      </div>
+      <div className="flex justify-center">
+        <button
+          className={
+            selectedTab === "All"
+              ? "bg-gray-800 rounded-t-md w-12"
+              : "bg-gray-500 rounded-t-md w-12"
+          }
+          onClick={() => handleTabClick("All")}
+        >
+          All
+        </button>
+        <button
+          className={
+            selectedTab === "Buy"
+              ? "bg-gray-800 rounded-t-md w-12"
+              : "bg-gray-500 rounded-t-md w-12"
+          }
+          onClick={() => handleTabClick("Buy")}
+        >
+          Buy
+        </button>
+        <button
+          className={
+            selectedTab === "Sell"
+              ? "bg-gray-800 rounded-t-md w-12"
+              : "bg-gray-500 rounded-t-md w-12"
+          }
+          onClick={() => handleTabClick("Sell")}
+        >
+          Sell
+        </button>
       </div>
       <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
@@ -325,19 +345,7 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    TXN
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
-                  >
                     Timestamp
-                  </th>
-                  <th
-                    scope="col"
-                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
-                  >
-                    Trader
                   </th>
                   <th
                     scope="col"
@@ -355,25 +363,31 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    Subject
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
-                  >
-                    Transaction Type
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
-                  >
-                    Share Amount
+                    Trader
                   </th>
                   <th
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
-                    ETH
+                    Purchase Amount
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Subject
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Subject Portfolio Balance
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Subject ETH Balance
                   </th>
                 </tr>
               </thead>
@@ -391,22 +405,29 @@ const StreamTable: React.FC = () => {
                       }
                     >
                       <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        <a
-                          href={`https://basescan.org/tx/${event.transactionHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <img
-                            className="rounded-full"
-                            src={logoEther}
-                            alt="Transaction Hash"
-                            width="36"
-                            height="36"
-                          />
-                        </a>
+                        <div className="flex">
+                          <a
+                            href={`https://basescan.org/tx/${event.transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              className="rounded-full"
+                              src={logoEther}
+                              alt="Transaction Hash"
+                              width="36"
+                              height="36"
+                            />
+                          </a>
+                          {event.timestamp}
+                        </div>
                       </td>
-                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {event.timestamp}
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {traderInfo[event.trader]?.ethBalance + " ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {traderInfo[event.trader]?.portfolio
+                          ?.portfolioValueETH + " ETH"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         <a
@@ -437,25 +458,17 @@ const StreamTable: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                <img
-                                  className="rounded-full"
-                                  src={logoFtech}
-                                  alt="Friend Tech Account"
-                                  width="36"
-                                  height="36"
-                                />
+                                {traderInfo[event.trader]?.twitterName.slice(
+                                  0,
+                                  15
+                                )}
                               </a>
-                              {traderInfo[event.trader]?.twitterName.slice(0, 15)}
                             </div>
                           )}
                         </a>
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {traderInfo[event.trader]?.ethBalance + " ETH"}
-                      </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {traderInfo[event.trader]?.portfolio?.portfolioValueETH +
-                          " ETH"}
+                      <td className="px-4 py-4 text-xl text-sm font-medium whitespace-nowrap">
+                        {event.ethAmount}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {/* Display Twitter Username if available */}
@@ -481,26 +494,20 @@ const StreamTable: React.FC = () => {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <img
-                                className="rounded-full"
-                                src={logoFtech}
-                                alt="Friend Tech Account"
-                                width="36"
-                                height="36"
-                              />
+                              {subjectInfo[event.subject]?.twitterName.slice(
+                                0,
+                                15
+                              )}
                             </a>
-                            {subjectInfo[event.subject]?.twitterName.slice(0,15)}
                           </div>
                         )}
                       </td>
-                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {event.transactionType}
-                      </td>
-                      <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {event.shareAmount}
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {subjectInfo[event.subject]?.ethBalance + " ETH"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {event.ethAmount}
+                        {subjectInfo[event.subject]?.portfolio
+                          ?.portfolioValueETH + " ETH"}
                       </td>
                     </tr>
                   );
