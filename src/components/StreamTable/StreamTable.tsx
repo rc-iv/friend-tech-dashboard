@@ -48,11 +48,21 @@ interface User {
   lifetimeFeesCollectedInWei: string;
   portfolio: Portfolio;
   ethBalance?: string;
+  holders?: Holders;
 }
 
+interface PortfolioUser {
+  address: string;
+  balance: string;
+}
+
+interface Holders {
+  reciprocity: string;
+  holdings: PortfolioUser;
+}
 // Define a new interface for Portfolio containing holdings and portfolioValueEth
 interface Portfolio {
-  holdings: User[];
+  holdings: PortfolioUser[];
   portfolioValueETH: string;
 }
 
@@ -65,15 +75,22 @@ const StreamTable: React.FC = () => {
   const { walletAddress } = useWallet();
 
   /* Filters */
-  const [ethFilter, setEthFilter] = useState<number | null>(null);
+  const [ethFilterMin, setEthFilterMin] = useState<number | null>(null);
+  const [ethFilterMax, setEthFilterMax] = useState<number | null>(null);
 
   const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
   const [traderPortfolioFilter, setTraderPortfolioFilter] = useState<
     number | null
   >(null);
+  const [traderReciprocityFilter, setTraderReciprocityFilter] = useState<
+    number | null
+  >(null);
 
   const [subjectETHFilter, setSubjectETHFilter] = useState<number | null>(null);
   const [subjectPortfolioFilter, setSubjectPortfolioFilter] = useState<
+    number | null
+  >(null);
+  const [subjectReciprocityFilter, setSubjectReciprocityFilter] = useState<
     number | null
   >(null);
 
@@ -232,8 +249,11 @@ const StreamTable: React.FC = () => {
     conditions.push((event) => event.transactionType === selectedTab);
   }
 
-  if (ethFilter) {
-    conditions.push((event) => parseFloat(event.ethAmount) >= ethFilter);
+  if (ethFilterMin !== null) {
+    conditions.push((event) => parseFloat(event.ethAmount) >= ethFilterMin);
+  }
+  if (ethFilterMax !== null) {
+    conditions.push((event) => parseFloat(event.ethAmount) <= ethFilterMax);
   }
 
   if (traderPortfolioFilter) {
@@ -251,6 +271,15 @@ const StreamTable: React.FC = () => {
         traderInfo[event.trader]?.ethBalance || "0"
       );
       return ethBalance >= traderETHFilter;
+    });
+  }
+
+  if (traderReciprocityFilter) {
+    conditions.push((event) => {
+      const reciprocity = parseFloat(
+        traderInfo[event.trader]?.holders?.reciprocity || "0"
+      );
+      return reciprocity >= traderReciprocityFilter;
     });
   }
 
@@ -272,6 +301,15 @@ const StreamTable: React.FC = () => {
     });
   }
 
+  if (subjectReciprocityFilter) {
+    conditions.push((event) => {
+      const reciprocity = parseFloat(
+        subjectInfo[event.subject]?.holders?.reciprocity || "0"
+      );
+      return reciprocity >= subjectReciprocityFilter;
+    });
+  }
+
   if (selfTxnFilter) {
     conditions.push((event) => event.trader === event.subject);
   }
@@ -290,7 +328,7 @@ const StreamTable: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col text-white bg-black">
+    <div className="flex-col text-white bg-black">
       {/*filters*/}
       <div className="invisible md:visible flex justify-between">
         {/* trader filter*/}
@@ -298,7 +336,7 @@ const StreamTable: React.FC = () => {
           <div className="flex items-center">
             <span className="mx-2">Trader Portfolio:</span>
             <input
-              className="w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              className="w-5/8 my-1 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
               type="number"
               placeholder="Filter by Portfolio Value"
               onChange={(e) =>
@@ -309,23 +347,46 @@ const StreamTable: React.FC = () => {
           <div className="flex items-center">
             <span className="mx-2">Trader ETH:</span>
             <input
-              className="ml-8 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              className="ml-8 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
               type="number"
               placeholder="Filter by ETH balance"
               onChange={(e) => setTraderETHFilter(parseFloat(e.target.value))}
             />
           </div>
+          <div className="flex items-center">
+            <span className="mx-2">Trader 3,3:</span>
+            <input
+              className="ml-9 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by 3,3%"
+              onChange={(e) =>
+                setTraderReciprocityFilter(parseFloat(e.target.value) / 100)
+              }
+            />
+          </div>
         </div>
         {/* general filters */}
         <div className="flex flex-col items-center">
-          <div className="flex items-center">
-            <span className="mx-4">Purchase Amount:</span>
-            <input
-              className="w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
-              type="number"
-              placeholder="Filter by ETH"
-              onChange={(e) => setEthFilter(parseFloat(e.target.value))}
-            />
+          Purchase Amount
+          <div className="flex justify-left items-center">
+            <div className="flex items-center">
+              <span className="mx-4">Min:</span>
+              <input
+                className="w-1/2 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                type="number"
+                placeholder="Min ETH"
+                onChange={(e) => setEthFilterMin(parseFloat(e.target.value))}
+              />
+            </div>
+            <div className="flex items-center">
+              <span className="mx-4">Max:</span>
+              <input
+                className="w-1/2 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                type="number"
+                placeholder="Max ETH"
+                onChange={(e) => setEthFilterMax(parseFloat(e.target.value))}
+              />
+            </div>
           </div>
           {/* checkbox filters */}
           <div className="flex justify-between">
@@ -354,7 +415,7 @@ const StreamTable: React.FC = () => {
           <div className="flex items-center">
             <span className="mx-4">Subject Portfolio:</span>
             <input
-              className="mx-2 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              className="mx-2 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
               type="number"
               placeholder="Filter by Portfolio Value"
               onChange={(e) =>
@@ -365,10 +426,21 @@ const StreamTable: React.FC = () => {
           <div className="flex items-center">
             <span className="mx-4">Subject ETH:</span>
             <input
-              className="mx-2 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              className="mx-2 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
               type="number"
               placeholder="Filter by ETH Balance"
               onChange={(e) => setSubjectETHFilter(parseFloat(e.target.value))}
+            />
+          </div>
+          <div className="flex items-center">
+            <span className="mx-2">Subject 3,3:</span>
+            <input
+              className="mx-2 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by 3,3%"
+              onChange={(e) =>
+                setSubjectReciprocityFilter(parseFloat(e.target.value)/100)
+              }
             />
           </div>
         </div>
@@ -433,6 +505,12 @@ const StreamTable: React.FC = () => {
                     scope="col"
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
+                    Trader 3,3%
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
                     Trader
                   </th>
                   <th
@@ -446,6 +524,12 @@ const StreamTable: React.FC = () => {
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Subject
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Subject 3,3%
                   </th>
                   <th
                     scope="col"
@@ -466,7 +550,7 @@ const StreamTable: React.FC = () => {
                   // Determine base color based on transaction type
                   const baseColor =
                     event.transactionType === "Buy" ? "green" : "red";
-
+                  console.log(JSON.stringify(traderInfo[event.trader].holders));
                   return (
                     <tr
                       key={index}
@@ -498,6 +582,14 @@ const StreamTable: React.FC = () => {
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {traderInfo[event.trader]?.portfolio
                           ?.portfolioValueETH + " ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {(
+                          (parseFloat(
+                            traderInfo[event.trader]?.holders
+                              ?.reciprocity as string
+                          ) ?? 0) * 100
+                        ).toFixed(1) + "%"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         <a
@@ -571,6 +663,14 @@ const StreamTable: React.FC = () => {
                             </a>
                           </div>
                         )}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {(
+                          (parseFloat(
+                            subjectInfo[event.subject]?.holders
+                              ?.reciprocity as string
+                          ) ?? 0) * 100
+                        ).toFixed(1) + "%"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {subjectInfo[event.subject]?.ethBalance + " ETH"}
