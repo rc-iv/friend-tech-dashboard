@@ -172,7 +172,7 @@ const StreamTable: React.FC = () => {
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
     //set poll interval to 3 seconds
 
-    const pollInterval = 10000;
+    const pollInterval = 8000;
 
     const fetchEvents = async () => {
       try {
