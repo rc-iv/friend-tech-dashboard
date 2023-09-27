@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Web3 from "web3";
 import contractAbi from "./contractAbi";
 import { useWallet } from "../WalletContext/WalletContext"; // adjust the import path accordingly
@@ -66,6 +66,18 @@ interface Portfolio {
   portfolioValueETH: string;
 }
 
+const deepEqualArray = (arr1: any[], arr2: any[]) => {
+  if (arr1.length !== arr2.length) return false;
+
+  for (let i = 0; i < arr1.length; i++) {
+    if (JSON.stringify(arr1[i]) !== JSON.stringify(arr2[i])) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const StreamTable: React.FC = () => {
   const [events, setEvents] = useState<TradeEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
@@ -85,6 +97,9 @@ const StreamTable: React.FC = () => {
   const [traderReciprocityFilter, setTraderReciprocityFilter] = useState<
     number | null
   >(null);
+  const [traderPriceMaxFilter, setTraderPriceMaxFilter] = useState<
+    number | null
+  >(null);
 
   const [subjectETHFilter, setSubjectETHFilter] = useState<number | null>(null);
   const [subjectPortfolioFilter, setSubjectPortfolioFilter] = useState<
@@ -96,6 +111,8 @@ const StreamTable: React.FC = () => {
 
   const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
   const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
+
+  const [notifications, setNotifications] = useState<boolean>(false);
 
   const [selectedTab, setSelectedTab] = useState<string>("All");
   /* End Filters */
@@ -240,8 +257,20 @@ const StreamTable: React.FC = () => {
     }
   }, [pendingEvents, subjectInfo, traderInfo]);
 
+  //notifications for new events based on filters
+  useEffect(() => {
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        console.log("Notification permission granted.");
+      } else {
+        console.log("Unable to get permission to notify.");
+      }
+    });
+  }, []);
+
   // Filter events based on selected filters
   let filteredEvents = events;
+  const prevFilteredEventsRef = useRef<TradeEvent[]>([]);
 
   let conditions: Array<(event: TradeEvent) => boolean> = [];
 
@@ -280,6 +309,13 @@ const StreamTable: React.FC = () => {
         traderInfo[event.trader]?.holders?.reciprocity || "0"
       );
       return reciprocity >= traderReciprocityFilter;
+    });
+  }
+
+  if (traderPriceMaxFilter) {
+    conditions.push((event) => {
+      const price = parseFloat(traderInfo[event.trader]?.displayPrice || "0");
+      return price <= traderPriceMaxFilter;
     });
   }
 
@@ -327,6 +363,24 @@ const StreamTable: React.FC = () => {
     conditions.every((condition) => condition(event))
   );
 
+  useEffect(() => {
+    // Check if filteredEvents has new items compared to the previous snapshot
+    const hasNewItems = !deepEqualArray(
+      filteredEvents,
+      prevFilteredEventsRef.current
+    );
+
+    // Update the snapshot
+    prevFilteredEventsRef.current = filteredEvents;
+
+    // If there are new items, show a notification
+    if (hasNewItems && Notification.permission === "granted" && notifications) {
+      new Notification("New item added!", {
+        body: "A new item has been added to your filtered table.",
+      });
+    }
+  }, [filteredEvents]);
+
   return (
     <div className="flex-col text-white bg-black">
       {/*filters*/}
@@ -364,6 +418,17 @@ const StreamTable: React.FC = () => {
               }
             />
           </div>
+          {/* <div className="flex items-center">
+            <span className="mx-2">Trader Price:</span>
+            <input
+              className="ml-9 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+              type="number"
+              placeholder="Filter by 3,3%"
+              onChange={(e) =>
+                setTraderPriceMaxFilter(parseFloat(e.target.value) * 1e18)
+              }
+            />
+          </div> */}
         </div>
         {/* general filters */}
         <div className="flex flex-col items-center">
@@ -407,6 +472,14 @@ const StreamTable: React.FC = () => {
                 />
                 <span>Supply = 1</span>
               </label>
+              <label className="m-4 flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={notifications}
+                  onChange={() => setNotifications(!notifications)}
+                />
+                <span>Notifications</span>
+              </label>
             </div>
           </div>
         </div>
@@ -439,7 +512,7 @@ const StreamTable: React.FC = () => {
               type="number"
               placeholder="Filter by 3,3%"
               onChange={(e) =>
-                setSubjectReciprocityFilter(parseFloat(e.target.value)/100)
+                setSubjectReciprocityFilter(parseFloat(e.target.value) / 100)
               }
             />
           </div>
@@ -506,6 +579,12 @@ const StreamTable: React.FC = () => {
                     className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                   >
                     Trader 3,3%
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  >
+                    Trader Price
                   </th>
                   <th
                     scope="col"
@@ -592,6 +671,11 @@ const StreamTable: React.FC = () => {
                         ).toFixed(1) + "%"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {parseFloat(traderInfo[event.trader]?.displayPrice) /
+                          1e18 +
+                          " ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         <a
                           href={`https://basescan.org/address/${event.trader}`}
                           target="_blank"
@@ -673,11 +757,11 @@ const StreamTable: React.FC = () => {
                         ).toFixed(1) + "%"}
                       </td>
                       <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                        {subjectInfo[event.subject]?.ethBalance + " ETH"}
-                      </td>
-                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                         {subjectInfo[event.subject]?.portfolio
                           ?.portfolioValueETH + " ETH"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                        {subjectInfo[event.subject]?.ethBalance + " ETH"}
                       </td>
                     </tr>
                   );
