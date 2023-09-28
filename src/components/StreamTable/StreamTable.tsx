@@ -265,15 +265,17 @@ const StreamTable: React.FC = () => {
             );
             const messageData = decodedData._message;
             const targetAddress = "0x" + (messageData as any).slice(98, 138);
-
+             
+            if (!depositorInfo[targetAddress]) {
             // Fetch additional depositor information
             const depositorUser = await fetchDepositor(targetAddress, web3);
 
-            // Assuming fetchDepositor returns depositor information
             setDepositorInfo((prevDepositorInfo) => ({
               ...prevDepositorInfo,
               [targetAddress]: depositorUser,
             }));
+            }
+            
 
             // Assuming you have a way to get a timestamp for the deposit
             const timestamp = new Date().toLocaleTimeString();
