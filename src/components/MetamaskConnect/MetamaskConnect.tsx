@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useWallet } from '../WalletContext/WalletContext'; // adjust the import path accordingly
 import Web3 from 'web3';
 import detectEthereumProvider from '@metamask/detect-provider';
