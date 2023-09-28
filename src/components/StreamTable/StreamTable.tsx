@@ -9,6 +9,7 @@ import {
   fetchUserInfo,
   filterEvents,
   fetchDepositor,
+  filterDeposits
 } from "./StreamDataProcessor";
 import TableFilters from "../TableFilters/TableFilters";
 
@@ -96,6 +97,13 @@ const StreamTable: React.FC = () => {
   const [ethFilterMin, setEthFilterMin] = useState<number | null>(null);
   const [ethFilterMax, setEthFilterMax] = useState<number | null>(null);
 
+  const [depositEthFilterMin, setDepositEthFilterMin] = useState<number | null>(
+    null
+  );
+  const [depositEthFilterMax, setDepositEthFilterMax] = useState<number | null>(
+    null
+  );
+
   const [traderETHFilter, setTraderETHFilter] = useState<number | null>(null);
   const [traderPortfolioFilter, setTraderPortfolioFilter] = useState<
     number | null
@@ -115,10 +123,24 @@ const StreamTable: React.FC = () => {
     number | null
   >(null);
 
+  const [depositorETHFilter, setDepositorETHFilter] = useState<number | null>(
+    null
+  );
+  const [depositorPortfolioFilter, setDepositorPortfolioFilter] = useState<
+    number | null
+  >(null);
+  const [depositorReciprocityFilter, setDepositorReciprocityFilter] = useState<
+    number | null
+  >(null);
+  const [depositorPriceMaxFilter, setDepositorPriceMaxFilter] = useState<
+    number | null
+  >(null);
+
   const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
   const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
 
-  const [notifications, setNotifications] = useState<boolean>(false);
+  const [portfolioNotifications, setPortfolioNotifications] = useState<boolean>(false);
+  const [depositNotifications, setDepositNotifications] = useState<boolean>(false);
 
   const [selectedTab, setSelectedTab] = useState<string>("All");
   /* End Filters */
@@ -425,12 +447,41 @@ const StreamTable: React.FC = () => {
     prevFilteredEventsRef.current = filteredEvents;
 
     // If there are new items, show a notification
-    if (hasNewItems && Notification.permission === "granted" && notifications) {
+    if (hasNewItems && Notification.permission === "granted" && portfolioNotifications) {
       new Notification("New item added!", {
         body: "A new item has been added to your filtered table.",
       });
     }
   }, [filteredEvents]);
+
+  // filter deposit events based on selected filters
+  const filteredDepositEvents = filterDeposits(
+    depositEvents,
+    depositorInfo,
+    depositEthFilterMin,
+    depositEthFilterMax,
+    depositorPortfolioFilter,
+    depositorETHFilter,
+    depositorReciprocityFilter
+  );
+  const prevFilteredDepositEventsRef = useRef<DepositEvent[]>([]);
+  useEffect(() => {
+    // Check if filteredDepositEvents has new items compared to the previous snapshot
+    const hasNewItems = !deepEqualArray(
+      filteredDepositEvents,
+      prevFilteredDepositEventsRef.current
+    );
+
+    // Update the snapshot
+    prevFilteredDepositEventsRef.current = filteredDepositEvents;
+
+    // If there are new items, show a notification
+    if (hasNewItems && Notification.permission === "granted" && depositNotifications) {
+      new Notification("New item added!", {
+        body: "A new item has been added to your filtered table.",
+      });
+    }
+  }, [filteredDepositEvents]);
 
   return (
     <div className="flex-col text-white bg-black">
@@ -443,8 +494,10 @@ const StreamTable: React.FC = () => {
         setSelfTxnFilter={setSelfTxnFilter}
         supplyOneFilter={supplyOneFilter}
         setSupplyOneFilter={setSupplyOneFilter}
-        notifications={notifications}
-        setNotifications={setNotifications}
+        portfolioNotifications={portfolioNotifications}
+        setPortfolioNotifications={setPortfolioNotifications}
+        depositNotifications={depositNotifications}
+        setDepositNotifications={setDepositNotifications}
         traderETHFilter={traderETHFilter}
         setTraderETHFilter={setTraderETHFilter}
         traderPortfolioFilter={traderPortfolioFilter}
@@ -461,6 +514,16 @@ const StreamTable: React.FC = () => {
         setSubjectReciprocityFilter={setSubjectReciprocityFilter}
         handleTabClick={handleTabClick}
         selectedTab={selectedTab}
+        depositEthFilterMin={depositEthFilterMin}
+        setDepositEthFilterMin={setDepositEthFilterMin}
+        depositEthFilterMax={depositEthFilterMax}
+        setDepositEthFilterMax={setDepositEthFilterMax}
+        depositorETHFilter={depositorETHFilter}
+        setDepositorETHFilter={setDepositorETHFilter}
+        depositorPortfolioFilter={depositorPortfolioFilter}
+        setDepositorPortfolioFilter={setDepositorPortfolioFilter}
+        depositorReciprocityFilter={depositorReciprocityFilter}
+        setDepositorReciprocityFilter={setDepositorReciprocityFilter}
       />
       <div className="flex justify-center">
         <button
@@ -506,7 +569,7 @@ const StreamTable: React.FC = () => {
       </div>
       {selectedTab === "Deposits" ? (
         <DepositTable
-          depositEvents={depositEvents}
+          depositEvents={filteredDepositEvents}
           depositorInfo={depositorInfo}
         />
       ) : (

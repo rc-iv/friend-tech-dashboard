@@ -9,8 +9,10 @@ interface TableFiltersProps {
   setSelfTxnFilter: React.Dispatch<React.SetStateAction<boolean>>;
   supplyOneFilter: boolean;
   setSupplyOneFilter: React.Dispatch<React.SetStateAction<boolean>>;
-  notifications: boolean;
-  setNotifications: React.Dispatch<React.SetStateAction<boolean>>;
+  portfolioNotifications: boolean;
+  setPortfolioNotifications: React.Dispatch<React.SetStateAction<boolean>>;
+  depositNotifications: boolean;
+  setDepositNotifications: React.Dispatch<React.SetStateAction<boolean>>;
   traderETHFilter: number | null;
   setTraderETHFilter: React.Dispatch<React.SetStateAction<number | null>>;
   traderPortfolioFilter: number | null;
@@ -31,6 +33,20 @@ interface TableFiltersProps {
   setSubjectReciprocityFilter: React.Dispatch<
     React.SetStateAction<number | null>
   >;
+  depositorETHFilter: number | null;
+  setDepositorETHFilter: React.Dispatch<React.SetStateAction<number | null>>;
+  depositorPortfolioFilter: number | null;
+  setDepositorPortfolioFilter: React.Dispatch<
+    React.SetStateAction<number | null>
+  >;
+  depositorReciprocityFilter: number | null;
+  setDepositorReciprocityFilter: React.Dispatch<
+    React.SetStateAction<number | null>
+  >;
+  depositEthFilterMin: number | null;
+  setDepositEthFilterMin: React.Dispatch<React.SetStateAction<number | null>>;
+  depositEthFilterMax: number | null;
+  setDepositEthFilterMax: React.Dispatch<React.SetStateAction<number | null>>;
 
   handleTabClick: (tab: "Buy" | "Sell" | "All") => void;
   selectedTab: string;
@@ -45,8 +61,10 @@ const TableFilters: React.FC<TableFiltersProps> = ({
   setSelfTxnFilter,
   supplyOneFilter,
   setSupplyOneFilter,
-  notifications,
-  setNotifications,
+  portfolioNotifications,
+  setPortfolioNotifications,
+  depositNotifications,
+  setDepositNotifications,
   traderETHFilter,
   setTraderETHFilter,
   traderPortfolioFilter,
@@ -63,7 +81,108 @@ const TableFilters: React.FC<TableFiltersProps> = ({
   setSubjectReciprocityFilter,
   handleTabClick,
   selectedTab,
+  depositorETHFilter,
+  setDepositorETHFilter,
+  depositorPortfolioFilter,
+  setDepositorPortfolioFilter,
+  depositorReciprocityFilter,
+  setDepositorReciprocityFilter,
+  depositEthFilterMin,
+  setDepositEthFilterMin,
+  depositEthFilterMax,
+  setDepositEthFilterMax,
 }) => {
+  // If the selected tab is "Deposits", return an empty div (or null)
+  if (selectedTab === "Deposits") {
+    return (
+      <div>
+        {/*filters*/}
+        <div className="invisible md:visible flex justify-between">
+          {/* trader filter*/}
+          <div className="flex flex-col items-start w-1/3">
+            <div className="flex items-center">
+              <span className="mx-2">Depositor Portfolio:</span>
+              <input
+                className="w-5/8 my-1 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                type="number"
+                placeholder="Filter by Portfolio Value"
+                onChange={(e) =>
+                  setDepositorPortfolioFilter(parseFloat(e.target.value))
+                }
+              />
+            </div>
+            <div className="flex items-center">
+              <span className="mx-2">Depositor ETH:</span>
+              <input
+                className="ml-8 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                type="number"
+                placeholder="Filter by ETH balance"
+                onChange={(e) =>
+                  setDepositorETHFilter(parseFloat(e.target.value))
+                }
+              />
+            </div>
+            <div className="flex items-center">
+              <span className="mx-2">Depositor 3,3:</span>
+              <input
+                className="ml-9 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                type="number"
+                placeholder="Filter by 3,3%"
+                onChange={(e) =>
+                  setDepositorReciprocityFilter(
+                    parseFloat(e.target.value) / 100
+                  )
+                }
+              />
+            </div>
+          </div>
+          {/* general filters */}
+          <div className="flex flex-col items-center w-1/3">
+            Deposit Amount
+            <div className="flex justify-left items-center">
+              <div className="flex items-center">
+                <span className="mx-4">Min:</span>
+                <input
+                  className="w-1/2 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                  type="number"
+                  placeholder="Min ETH"
+                  onChange={(e) =>
+                    setDepositEthFilterMin(parseFloat(e.target.value))
+                  }
+                />
+              </div>
+              <div className="flex items-center">
+                <span className="mx-4">Max:</span>
+                <input
+                  className="w-1/2 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
+                  type="number"
+                  placeholder="Max ETH"
+                  onChange={(e) =>
+                    setDepositEthFilterMax(parseFloat(e.target.value))
+                  }
+                />
+              </div>
+            </div>
+            {/* checkbox filters */}
+            <div className="flex justify-between">
+              <div className="flex">
+                <label className="m-4 flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={depositNotifications}
+                    onChange={() => setDepositNotifications(!depositNotifications)}
+                  />
+                  <span>Notifications</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          {/* tbd filters */}
+          <div className="flex flex-col items-center w-1/3"> </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
       {/*filters*/}
@@ -101,17 +220,6 @@ const TableFilters: React.FC<TableFiltersProps> = ({
               }
             />
           </div>
-          {/* <div className="flex items-center">
-            <span className="mx-2">Trader Price:</span>
-            <input
-              className="ml-9 my-1 w-5/8 h-10 px-3 text-black placeholder-gray-600 border rounded-lg focus:shadow-outline"
-              type="number"
-              placeholder="Filter by 3,3%"
-              onChange={(e) =>
-                setTraderPriceMaxFilter(parseFloat(e.target.value) * 1e18)
-              }
-            />
-          </div> */}
         </div>
         {/* general filters */}
         <div className="flex flex-col items-center">
@@ -158,8 +266,8 @@ const TableFilters: React.FC<TableFiltersProps> = ({
               <label className="m-4 flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={notifications}
-                  onChange={() => setNotifications(!notifications)}
+                  checked={portfolioNotifications}
+                  onChange={() => setPortfolioNotifications(!portfolioNotifications)}
                 />
                 <span>Notifications</span>
               </label>

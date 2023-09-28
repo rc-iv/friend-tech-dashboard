@@ -47,6 +47,13 @@ interface TradeEvent {
   colorGradient: string;
 }
 
+interface DepositEvent {
+    address: string;
+    depositAmount: string;
+    timestamp: string;
+    transactionHash: string;
+  }
+
 export const deepEqualArray = (arr1: any[], arr2: any[]) => {
   if (arr1.length !== arr2.length) return false;
 
@@ -110,6 +117,58 @@ export const fetchUserInfo = async (
     console.error("Error fetching user info:", error);
   }
 };
+
+export const filterDeposits = (
+    events: DepositEvent[],
+    depositorInfo: Record<string, User>,
+    depositFilterMin: number | null,
+    depositFilterMax: number | null,
+    depositPortfolioFilter: number | null,
+    depositEthFilter: number | null,
+    depositReciprocityFilter: number | null,
+) =>{
+    let conditions: Array<(event: DepositEvent) => boolean> = [];
+
+    if (depositFilterMin !== null) {
+        conditions.push((event) => parseFloat(event.depositAmount) >= depositFilterMin);
+    }
+    if (depositFilterMax !== null) {
+        conditions.push((event) => parseFloat(event.depositAmount) <= depositFilterMax);
+    }
+
+    if (depositPortfolioFilter) {
+        conditions.push((event) => {
+            const portfolioValue = parseFloat(
+                depositorInfo[event.address]?.portfolio?.portfolioValueETH || "0"
+            );
+            return portfolioValue >= depositPortfolioFilter;
+        });
+    }
+
+    if (depositReciprocityFilter) {
+        conditions.push((event) => {
+            const reciprocity = parseFloat(
+                depositorInfo[event.address]?.holders?.reciprocity || "0"
+            );
+            return reciprocity >= depositReciprocityFilter;
+        });
+    }
+
+    if (depositEthFilter) {
+        conditions.push((event) => {
+            const ethBalance = parseFloat(
+                depositorInfo[event.address]?.ethBalance || "0"
+            );
+            return ethBalance >= depositEthFilter;
+        });
+    }
+
+    // Apply all conditions
+    return events.filter((event) =>
+        conditions.every((condition) => condition(event))
+    );
+
+}
 
 export const filterEvents = (
   events: TradeEvent[],
@@ -214,6 +273,7 @@ export const filterEvents = (
       return subjectShareSupply === 1;
     });
   }
+  
 
   // Apply all conditions
   return events.filter((event) =>
