@@ -1,9 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import Web3 from "web3";
-import contractAbi from "./contractAbi";
+import { contractAbi, bridgeAbi } from "./contractAbi";
 // import { useWallet } from "../WalletContext/WalletContext"; // uncomment to enable gating
 import SalesTable from "../SalesTable/SalesTable";
-import { deepEqualArray, fetchUserInfo, filterEvents } from "./StreamDataProcessor";
+import DepositTable from "../DepositTable/DepositTable";
+import {
+  deepEqualArray,
+  fetchUserInfo,
+  filterEvents,
+  fetchDepositor,
+} from "./StreamDataProcessor";
 import TableFilters from "../TableFilters/TableFilters";
 
 interface TradeEvent {
@@ -16,6 +22,7 @@ interface TradeEvent {
   transactionHash: string;
   colorGradient: string;
 }
+
 interface User {
   twitterUsername: string;
   twitterName: string;
@@ -51,12 +58,30 @@ interface Portfolio {
   portfolioValueETH: string;
 }
 
+interface DepositEvent {
+  address: string;
+  depositAmount: string;
+  timestamp: string;
+  transactionHash: string;
+}
+
+interface DepositTableProps {
+  depositEvents: DepositEvent[];
+  // Other props if necessary
+}
+
 const StreamTable: React.FC = () => {
   const [events, setEvents] = useState<TradeEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
 
+  const [depositEvents, setDepositEvents] = useState<DepositEvent[]>([]);
+  const [pendingDepositEvents, setPendingDepositEvents] = useState<
+    DepositEvent[]
+  >([]);
+
   const [subjectInfo, setSubjectInfo] = useState<Record<string, User>>({});
   const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
+  const [depositorInfo, setDepositorInfo] = useState<Record<string, User>>({});
 
   // Uncomment to enable gating
   // const { walletAddress } = useWallet();
@@ -91,7 +116,7 @@ const StreamTable: React.FC = () => {
 
   const [selectedTab, setSelectedTab] = useState<string>("All");
   /* End Filters */
-  const handleTabClick = (tab: "Buy" | "Sell" | "All") => {
+  const handleTabClick = (tab: "Buy" | "Sell" | "Deposits" | "All") => {
     setSelectedTab(tab);
   };
 
@@ -105,6 +130,13 @@ const StreamTable: React.FC = () => {
     // if (!walletAddress) return; // uncomment to enable gating
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
+
+    const depositContractAddress = "0x4200000000000000000000000000000000000007";
+    const depositContract = new web3.eth.Contract(
+      bridgeAbi,
+      depositContractAddress
+    );
+
     //set poll interval to 3 seconds
     const pollInterval = 3000;
 
@@ -185,13 +217,100 @@ const StreamTable: React.FC = () => {
       }
     };
 
+    const fetchDepositEvents = async () => {
+      try {
+        const latestBlock = await web3.eth.getBlockNumber();
+        const fromBlock = latestBlock - BigInt(200);
+        const fromBlockHex = web3.utils.toHex(fromBlock);
+
+        // Define the event signature for 'RelayedMessage'
+        const eventSignature = web3.utils.sha3("RelayedMessage(bytes32)");
+
+        // Create a filter for the event
+        const eventFilterParams = {
+          fromBlock: fromBlockHex,
+          toBlock: "latest",
+          address: "0x4200000000000000000000000000000000000007", // Your contract address
+          topics: [eventSignature],
+        };
+
+        const events = await web3.eth.getPastLogs(eventFilterParams as any);
+
+        const relayMessageABI = [
+          { internalType: "uint256", name: "_nonce", type: "uint256" },
+          { internalType: "address", name: "_sender", type: "address" },
+          { internalType: "address", name: "_target", type: "address" },
+          { internalType: "uint256", name: "_value", type: "uint256" },
+          { internalType: "uint256", name: "_minGasLimit", type: "uint256" },
+          { internalType: "bytes", name: "_message", type: "bytes" },
+        ];
+
+        const newDepositEvents = await Promise.all(
+          events.map(async (event) => {
+            const txnHash = (event as any).transactionHash;
+            const txn = await web3.eth.getTransaction(txnHash);
+
+            console.log(txn);
+            // get eth value deposited
+            let depositAmountString = txn.value.toString(); // Convert BigInt to string
+            let depositAmountNumber = parseFloat(depositAmountString); // Convert to Number for further calculations
+            let depositAbs = Math.abs(
+              parseFloat((depositAmountNumber / 1e18).toFixed(7))
+            ).toString();
+
+            // Decode the message data
+            const decodedData = web3.eth.abi.decodeParameters(
+              relayMessageABI,
+              txn.input.slice(10)
+            );
+            const messageData = decodedData._message;
+            const targetAddress = "0x" + (messageData as any).slice(98, 138);
+
+            // Fetch additional depositor information
+            const depositorUser = await fetchDepositor(targetAddress, web3);
+
+            // Assuming fetchDepositor returns depositor information
+            setDepositorInfo((prevDepositorInfo) => ({
+              ...prevDepositorInfo,
+              [targetAddress]: depositorUser,
+            }));
+
+            // Assuming you have a way to get a timestamp for the deposit
+            const timestamp = new Date().toLocaleTimeString();
+
+            // Create a new deposit event
+            return {
+              address: targetAddress,
+              depositAmount: depositAbs, // Replace with actual deposit amount
+              timestamp,
+              transactionHash: txnHash,
+            };
+          })
+        );
+
+        // Update pendingDepositEvents instead of depositEvents directly
+        setPendingDepositEvents((prevPendingDepositEvents) => [
+          ...prevPendingDepositEvents,
+          ...newDepositEvents,
+        ]);
+      } catch (error) {
+        console.error("Error fetching deposit events:", error);
+      }
+    };
+
     fetchEvents();
     const poll = setInterval(fetchEvents, pollInterval);
 
-    return () => clearInterval(poll);
+    fetchDepositEvents();
+    const pollDeposit = setInterval(fetchDepositEvents, pollInterval);
+
+    return () => {
+      clearInterval(poll);
+      clearInterval(pollDeposit);
+    };
   }, []); // add walletAddress as a dependency to enable gating
 
-  // New useEffect for moving fully loaded events from pendingEvents to events
+  // useEffect for moving fully loaded events from pendingEvents to events
   useEffect(() => {
     const fullyLoadedEvents = pendingEvents.filter((event) => {
       return subjectInfo[event.subject] && traderInfo[event.trader];
@@ -208,6 +327,38 @@ const StreamTable: React.FC = () => {
       );
     }
   }, [pendingEvents, subjectInfo, traderInfo]);
+
+  useEffect(() => {
+    const fullyLoadedDepositEvents = pendingDepositEvents.filter((event) => {
+      return depositorInfo[event.address];
+    });
+
+    if (fullyLoadedDepositEvents.length > 0) {
+      setDepositEvents((prevDepositEvents) => {
+        // Create a Set containing all the transactionHashes of existing deposit events
+        const existingTransactionHashes = new Set(
+          prevDepositEvents.map((event) => event.transactionHash)
+        );
+
+        // Filter out any new events that already exist based on their transactionHash
+        const uniqueNewEvents = fullyLoadedDepositEvents.filter(
+          (event) => !existingTransactionHashes.has(event.transactionHash)
+        );
+
+        const combinedDepositEvents = [
+          ...uniqueNewEvents,
+          ...prevDepositEvents,
+        ];
+        return combinedDepositEvents.slice(0, 1000);
+      });
+
+      setPendingDepositEvents((prevPendingDepositEvents) =>
+        prevPendingDepositEvents.filter(
+          (event) => !fullyLoadedDepositEvents.includes(event)
+        )
+      );
+    }
+  }, [pendingDepositEvents, depositorInfo]);
 
   //notifications for new events based on filters
   useEffect(() => {
@@ -292,8 +443,8 @@ const StreamTable: React.FC = () => {
         <button
           className={
             selectedTab === "All"
-              ? "bg-gray-800 rounded-t-md w-12"
-              : "bg-gray-500 rounded-t-md w-12"
+              ? "bg-gray-800 rounded-t-md w-20"
+              : "bg-gray-500 rounded-t-md w-20"
           }
           onClick={() => handleTabClick("All")}
         >
@@ -302,8 +453,8 @@ const StreamTable: React.FC = () => {
         <button
           className={
             selectedTab === "Buy"
-              ? "bg-gray-800 rounded-t-md w-12"
-              : "bg-gray-500 rounded-t-md w-12"
+              ? "bg-gray-800 rounded-t-md w-20"
+              : "bg-gray-500 rounded-t-md w-20"
           }
           onClick={() => handleTabClick("Buy")}
         >
@@ -312,19 +463,36 @@ const StreamTable: React.FC = () => {
         <button
           className={
             selectedTab === "Sell"
-              ? "bg-gray-800 rounded-t-md w-12"
-              : "bg-gray-500 rounded-t-md w-12"
+              ? "bg-gray-800 rounded-t-md w-20"
+              : "bg-gray-500 rounded-t-md w-20"
           }
           onClick={() => handleTabClick("Sell")}
         >
           Sell
         </button>
+        <button
+          className={
+            selectedTab === "Deposits"
+              ? "bg-gray-800 rounded-t-md w-20"
+              : "bg-gray-500 rounded-t-md w-20"
+          }
+          onClick={() => handleTabClick("Deposits")}
+        >
+          Deposits
+        </button>
       </div>
-      <SalesTable
-        filteredEvents={filteredEvents}
-        subjectInfo={subjectInfo}
-        traderInfo={traderInfo}
-      />
+      {selectedTab === "Deposits" ? (
+        <DepositTable
+          depositEvents={depositEvents}
+          depositorInfo={depositorInfo}
+        />
+      ) : (
+        <SalesTable
+          filteredEvents={filteredEvents}
+          subjectInfo={subjectInfo}
+          traderInfo={traderInfo}
+        />
+      )}
     </div>
   );
 };

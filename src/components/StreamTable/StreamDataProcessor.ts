@@ -220,3 +220,24 @@ export const filterEvents = (
     conditions.every((condition) => condition(event))
   );
 };
+
+export const fetchDepositor = async (address: string, web3: Web3) => {
+  try {
+    const url = `https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/user/${address}`;
+    const response = await fetch(url);
+    const user = await response.json();
+
+    // user web3 to fetch eth balance of address
+    const weiBalance = await web3.eth.getBalance(address);
+    // convert to eth
+    const ethBalanceString = web3.utils.fromWei(weiBalance, "ether");
+    // truncate to 2 decimal places
+    const ethBalance = parseFloat(ethBalanceString).toFixed(2);
+
+    user.userData.ethBalance = ethBalance;
+
+    return user.userData;
+  } catch (error) {
+    console.error("Error fetching user info:", error);
+  }
+};
