@@ -55,6 +55,27 @@ const DepositTable: React.FC<DepositTableProps> = ({
 }) => {
   console.log(`depositEvents: ${JSON.stringify(depositEvents)}`);
   //console.log(`depositorInfo: ${JSON.stringify(depositorInfo)}`);
+
+  // Convert 12-hour formatted times to 24-hour format and sort them
+  const sortedDepositEvents = [...depositEvents].sort((a, b) => {
+    const convertTo24Hour = (time:any) => {
+      const [mainTime, period] = time.split(' ');
+      let [hours, minutes, seconds] = mainTime.split(':');
+      if (period === "PM" && parseInt(hours) < 12) {
+        hours = (parseInt(hours) + 12).toString();
+      }
+      if (period === "AM" && parseInt(hours) === 12) {
+        hours = "00";
+      }
+      return `${hours}:${minutes}:${seconds}`;
+    };
+    
+    const timeA = convertTo24Hour(a.timestamp);
+    const timeB = convertTo24Hour(b.timestamp);
+    
+    return timeB.localeCompare(timeA);
+  });
+
   return (
     <div>
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -107,7 +128,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
         </thead>
         {/* Table Body */}
         <tbody className="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
-          {depositEvents.map((event, index) => (
+          {sortedDepositEvents.map((event, index) => (
             <tr key={index}>
               <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                 <div className="flex">

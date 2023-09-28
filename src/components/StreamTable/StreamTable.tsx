@@ -71,6 +71,7 @@ interface DepositTableProps {
 }
 
 const StreamTable: React.FC = () => {
+  /* State Variables */
   const [events, setEvents] = useState<TradeEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
 
@@ -82,6 +83,11 @@ const StreamTable: React.FC = () => {
   const [subjectInfo, setSubjectInfo] = useState<Record<string, User>>({});
   const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
   const [depositorInfo, setDepositorInfo] = useState<Record<string, User>>({});
+
+  /* End State Variables */
+
+  /* Refs */
+  const processedDepositTxHashes = useRef(new Set());
 
   // Uncomment to enable gating
   // const { walletAddress } = useWallet();
@@ -250,7 +256,19 @@ const StreamTable: React.FC = () => {
             const txnHash = (event as any).transactionHash;
             const txn = await web3.eth.getTransaction(txnHash);
 
-            console.log(txn);
+            // Skip processing if this event has already been processed
+            if (processedDepositTxHashes.current.has(txnHash)) {
+              return null;
+            }
+
+            // Mark this event as processed
+            processedDepositTxHashes.current.add(txnHash);
+
+            const depositBlock = await web3.eth.getBlock(txn.blockNumber);
+            const depositTimestamp = new Date(
+              Number(depositBlock.timestamp) * 1000
+            ).toLocaleTimeString();
+
             // get eth value deposited
             let depositAmountString = txn.value.toString(); // Convert BigInt to string
             let depositAmountNumber = parseFloat(depositAmountString); // Convert to Number for further calculations
@@ -265,17 +283,16 @@ const StreamTable: React.FC = () => {
             );
             const messageData = decodedData._message;
             const targetAddress = "0x" + (messageData as any).slice(98, 138);
-             
-            if (!depositorInfo[targetAddress]) {
-            // Fetch additional depositor information
-            const depositorUser = await fetchDepositor(targetAddress, web3);
 
-            setDepositorInfo((prevDepositorInfo) => ({
-              ...prevDepositorInfo,
-              [targetAddress]: depositorUser,
-            }));
+            if (!depositorInfo[targetAddress]) {
+              // Fetch additional depositor information
+              const depositorUser = await fetchDepositor(targetAddress, web3);
+
+              setDepositorInfo((prevDepositorInfo) => ({
+                ...prevDepositorInfo,
+                [targetAddress]: depositorUser,
+              }));
             }
-            
 
             // Assuming you have a way to get a timestamp for the deposit
             const timestamp = new Date().toLocaleTimeString();
@@ -284,16 +301,19 @@ const StreamTable: React.FC = () => {
             return {
               address: targetAddress,
               depositAmount: depositAbs, // Replace with actual deposit amount
-              timestamp,
+              timestamp: depositTimestamp,
               transactionHash: txnHash,
             };
           })
         );
 
-        // Update pendingDepositEvents instead of depositEvents directly
+        // Remove null values and update your state
+        const filteredNewDepositEvents = newDepositEvents.filter(
+          (e) => e !== null
+        ) as DepositEvent[];
         setPendingDepositEvents((prevPendingDepositEvents) => [
           ...prevPendingDepositEvents,
-          ...newDepositEvents,
+          ...filteredNewDepositEvents,
         ]);
       } catch (error) {
         console.error("Error fetching deposit events:", error);
@@ -330,6 +350,7 @@ const StreamTable: React.FC = () => {
     }
   }, [pendingEvents, subjectInfo, traderInfo]);
 
+  // use effect for moving fully loaded deposit events from pendingDepositEvents to depositEvents
   useEffect(() => {
     const fullyLoadedDepositEvents = pendingDepositEvents.filter((event) => {
       return depositorInfo[event.address];
