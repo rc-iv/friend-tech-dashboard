@@ -75,6 +75,7 @@ export const fetchUserInfo = async (
   setSubjectInfo: React.Dispatch<React.SetStateAction<Record<string, any>>>,
   setTraderInfo: React.Dispatch<React.SetStateAction<Record<string, any>>>,
   fetchedAddresses: Set<any>,
+  setFetchedAddresses: React.Dispatch<React.SetStateAction<Set<any>>>,
   traderInfo: Record<string, User>,
   subjectInfo: Record<string, User>
 ) => {
@@ -295,12 +296,21 @@ export const fetchDepositor = async (address: string, web3: Web3) => {
 
     // user web3 to fetch eth balance of address
     const weiBalance = await web3.eth.getBalance(address);
+    if (weiBalance === undefined) {
+      console.warn("weiBalance is undefined in fetchUserInfo");
+      return;
+    }
     // convert to eth
     const ethBalanceString = web3.utils.fromWei(weiBalance, "ether");
     // truncate to 2 decimal places
     const ethBalance = parseFloat(ethBalanceString).toFixed(2);
 
-    user.userData.ethBalance = ethBalance;
+    if (user && user.userData) {
+      user.userData.ethBalance = ethBalance;
+    } else {
+      console.warn("userData is undefined in fetchUserInfo");
+      return;
+    }
 
     return user.userData;
   } catch (error) {

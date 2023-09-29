@@ -78,6 +78,10 @@ const StreamTable: React.FC = () => {
   const [events, setEvents] = useState<TradeEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
 
+  const [fetchedAddresses, setFetchedAddresses] = useState<Set<string>>(
+    new Set()
+  );
+
   const [depositEvents, setDepositEvents] = useState<DepositEvent[]>([]);
   const [pendingDepositEvents, setPendingDepositEvents] = useState<
     DepositEvent[]
@@ -159,7 +163,6 @@ const StreamTable: React.FC = () => {
   const mainNetProvider =
     "https://ethereum.blockpi.network/v1/rpc/c9061567b7574919c0022473a431e4d243daf4d5";
   const web3Main = new Web3(mainNetProvider);
-  const fetchedAddresses = new Set();
 
   useEffect(() => {
     // if (!walletAddress) return; // uncomment to enable gating
@@ -181,9 +184,15 @@ const StreamTable: React.FC = () => {
           pastEvents.map(async (event: any) => {
             const { returnValues, blockNumber, transactionHash } = event;
             const block = await web3.eth.getBlock(blockNumber);
-            const timestamp = new Date(
+            let timestamp = new Date(
               Number(block.timestamp) * 1000
             ).toLocaleTimeString();
+            if (block !== null) {
+              // use current time as timestamp
+              timestamp = new Date(
+                Number(block.timestamp) * 1000
+              ).toLocaleTimeString();
+            }
             fetchUserInfo(
               web3,
               returnValues.subject,
@@ -191,6 +200,7 @@ const StreamTable: React.FC = () => {
               setSubjectInfo,
               setTraderInfo,
               fetchedAddresses,
+              setFetchedAddresses,
               subjectInfo,
               traderInfo
             ); // Fetch additional info for each subject
@@ -201,6 +211,7 @@ const StreamTable: React.FC = () => {
               setSubjectInfo,
               setTraderInfo,
               fetchedAddresses,
+              setFetchedAddresses,
               subjectInfo,
               traderInfo
             ); // Fetch additional info for each trader
@@ -323,6 +334,10 @@ const StreamTable: React.FC = () => {
                 ...prevDepositorInfo,
                 [targetAddress]: depositorUser,
               }));
+            } else {
+              console.log(
+                `Depositor info already fetched for ${targetAddress}`
+              );
             }
 
             // Assuming you have a way to get a timestamp for the deposit
