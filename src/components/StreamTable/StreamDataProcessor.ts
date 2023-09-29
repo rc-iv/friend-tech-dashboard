@@ -52,6 +52,8 @@ interface DepositEvent {
     depositAmount: string;
     timestamp: string;
     transactionHash: string;
+    l1Address: string;
+    l1Balance: string;
   }
 
 export const deepEqualArray = (arr1: any[], arr2: any[]) => {

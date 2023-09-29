@@ -6,6 +6,8 @@ interface DepositEvent {
   depositAmount: string;
   timestamp: string;
   transactionHash: string;
+  l1Address: string;
+  l1Balance: string;
 }
 
 interface User {
@@ -58,9 +60,9 @@ const DepositTable: React.FC<DepositTableProps> = ({
 
   // Convert 12-hour formatted times to 24-hour format and sort them
   const sortedDepositEvents = [...depositEvents].sort((a, b) => {
-    const convertTo24Hour = (time:any) => {
-      const [mainTime, period] = time.split(' ');
-      let [hours, minutes, seconds] = mainTime.split(':');
+    const convertTo24Hour = (time: any) => {
+      const [mainTime, period] = time.split(" ");
+      let [hours, minutes, seconds] = mainTime.split(":");
       if (period === "PM" && parseInt(hours) < 12) {
         hours = (parseInt(hours) + 12).toString();
       }
@@ -69,10 +71,10 @@ const DepositTable: React.FC<DepositTableProps> = ({
       }
       return `${hours}:${minutes}:${seconds}`;
     };
-    
+
     const timeA = convertTo24Hour(a.timestamp);
     const timeB = convertTo24Hour(b.timestamp);
-    
+
     return timeB.localeCompare(timeA);
   });
 
@@ -105,6 +107,12 @@ const DepositTable: React.FC<DepositTableProps> = ({
               className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
             >
               ETH Balance
+            </th>
+            <th
+              scope="col"
+              className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+            >
+              L1 ETH Balance
             </th>
             <th
               scope="col"
@@ -193,6 +201,25 @@ const DepositTable: React.FC<DepositTableProps> = ({
                 {depositorInfo[event.address]?.ethBalance + " ETH"}
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                <div className="flex">
+                  <a
+                  className="mr-1"
+                    href={`https://debank.com/profile/${event.l1Address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      className="rounded-full"
+                      src="https://assets.debank.com/static/media/logo-mini.db43c06d.svg"
+                      alt="Transaction Hash"
+                      width="24"
+                      height="24"
+                    />
+                  </a>
+                  {event.l1Balance + " ETH"}
+                </div>
+              </td>
+              <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 {parseFloat(
                   depositorInfo[event.address]?.displayPrice as string
                 ) /
@@ -201,7 +228,8 @@ const DepositTable: React.FC<DepositTableProps> = ({
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 {parseFloat(
-                  depositorInfo[event.address]?.portfolio?.portfolioValueETH).toString() + " ETH"}
+                  depositorInfo[event.address]?.portfolio?.portfolioValueETH
+                ).toString() + " ETH"}
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 {(

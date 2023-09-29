@@ -9,7 +9,7 @@ import {
   fetchUserInfo,
   filterEvents,
   fetchDepositor,
-  filterDeposits
+  filterDeposits,
 } from "./StreamDataProcessor";
 import TableFilters from "../TableFilters/TableFilters";
 
@@ -64,6 +64,8 @@ interface DepositEvent {
   depositAmount: string;
   timestamp: string;
   transactionHash: string;
+  l1Address: string;
+  l1Balance: string;
 }
 
 interface DepositTableProps {
@@ -139,8 +141,10 @@ const StreamTable: React.FC = () => {
   const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
   const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
 
-  const [portfolioNotifications, setPortfolioNotifications] = useState<boolean>(false);
-  const [depositNotifications, setDepositNotifications] = useState<boolean>(false);
+  const [portfolioNotifications, setPortfolioNotifications] =
+    useState<boolean>(false);
+  const [depositNotifications, setDepositNotifications] =
+    useState<boolean>(false);
 
   const [selectedTab, setSelectedTab] = useState<string>("All");
   /* End Filters */
@@ -306,6 +310,24 @@ const StreamTable: React.FC = () => {
             const messageData = decodedData._message;
             const targetAddress = "0x" + (messageData as any).slice(98, 138);
 
+            const l1Address = "0x" + (messageData as any).slice(34, 74);
+            let l1Balance = "0";
+            try {
+              const mainNetProvider =
+                "https://ethereum.blockpi.network/v1/rpc/c9061567b7574919c0022473a431e4d243daf4d5";
+              const web3Main = new Web3(mainNetProvider);
+              // user web3 to fetch eth balance of address
+              const l1WeiBalance = await web3Main.eth.getBalance(l1Address);
+              // convert to eth
+              l1Balance = web3.utils.fromWei(l1WeiBalance, "ether");
+              // truncate to 2 decimals
+              l1Balance = parseFloat(l1Balance).toFixed(2).toString();
+              console.log(
+                `L1 Address: ${l1Address} -- L1 Balance: ${l1Balance}`
+              );
+            } catch (error) {
+              console.error(`Error fetching L1 balance: ${error}`);
+            }
             if (!depositorInfo[targetAddress]) {
               // Fetch additional depositor information
               const depositorUser = await fetchDepositor(targetAddress, web3);
@@ -325,6 +347,8 @@ const StreamTable: React.FC = () => {
               depositAmount: depositAbs, // Replace with actual deposit amount
               timestamp: depositTimestamp,
               transactionHash: txnHash,
+              l1Address,
+              l1Balance,
             };
           })
         );
@@ -447,7 +471,11 @@ const StreamTable: React.FC = () => {
     prevFilteredEventsRef.current = filteredEvents;
 
     // If there are new items, show a notification
-    if (hasNewItems && Notification.permission === "granted" && portfolioNotifications) {
+    if (
+      hasNewItems &&
+      Notification.permission === "granted" &&
+      portfolioNotifications
+    ) {
       new Notification("New item added!", {
         body: "A new item has been added to your filtered table.",
       });
@@ -476,7 +504,11 @@ const StreamTable: React.FC = () => {
     prevFilteredDepositEventsRef.current = filteredDepositEvents;
 
     // If there are new items, show a notification
-    if (hasNewItems && Notification.permission === "granted" && depositNotifications) {
+    if (
+      hasNewItems &&
+      Notification.permission === "granted" &&
+      depositNotifications
+    ) {
       new Notification("New item added!", {
         body: "A new item has been added to your filtered table.",
       });
