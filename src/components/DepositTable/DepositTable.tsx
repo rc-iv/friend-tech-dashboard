@@ -55,9 +55,6 @@ const DepositTable: React.FC<DepositTableProps> = ({
   depositEvents,
   depositorInfo,
 }) => {
-  console.log(`depositEvents: ${JSON.stringify(depositEvents)}`);
-  //console.log(`depositorInfo: ${JSON.stringify(depositorInfo)}`);
-
   // Convert 12-hour formatted times to 24-hour format and sort them
   const sortedDepositEvents = [...depositEvents].sort((a, b) => {
     const convertTo24Hour = (time: any) => {
@@ -141,7 +138,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
               <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                 <div className="flex">
                   <a
-                    href={`https://basescan.org/tx/${event.transactionHash}`}
+                    href={`https://etherscan.io/tx/${event.transactionHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -157,42 +154,57 @@ const DepositTable: React.FC<DepositTableProps> = ({
                 </div>
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                <a
-                  href={`https://basescan.org/address/${event.address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {/* Display Twitter Username if available */}
-                  {depositorInfo[event.address]?.twitterUsername && (
-                    <div className="flex">
-                      <a
-                        href={`https://x.com/${
-                          depositorInfo[event.address]?.twitterUsername
-                        }`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <img
-                          className="rounded-full mr-1"
-                          src={depositorInfo[event.address]?.twitterPfpUrl}
-                          alt="X Avatar"
-                          width="24"
-                          height="24"
-                        />
-                      </a>
-                      <a
-                        href={`https://www.friend.tech/rooms/${event.address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {depositorInfo[event.address]?.twitterName?.slice(
-                          0,
-                          15
-                        )}
-                      </a>
-                    </div>
-                  )}
-                </a>
+                <div className="flex">
+                  <a
+                    href={`https://basescan.org/address/${event.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      className="rounded-full mr-2"
+                      src={logoEther}
+                      alt="Transaction Hash"
+                      width="24"
+                      height="24"
+                    />
+                  </a>
+                  <a
+                    href={`https://basescan.org/address/${event.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {/* Display Twitter Username if available */}
+                    {depositorInfo[event.address]?.twitterUsername && (
+                      <div className="flex">
+                        <a
+                          href={`https://x.com/${
+                            depositorInfo[event.address]?.twitterUsername
+                          }`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img
+                            className="rounded-full mr-1"
+                            src={depositorInfo[event.address]?.twitterPfpUrl}
+                            alt="X Avatar"
+                            width="24"
+                            height="24"
+                          />
+                        </a>
+                        <a
+                          href={`https://www.friend.tech/rooms/${event.address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {depositorInfo[event.address]?.twitterName?.slice(
+                            0,
+                            15
+                          )}
+                        </a>
+                      </div>
+                    )}
+                  </a>
+                </div>
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 {parseFloat(event.depositAmount).toFixed(2)}
@@ -203,7 +215,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 <div className="flex">
                   <a
-                  className="mr-1"
+                    className="mr-1"
                     href={`https://debank.com/profile/${event.l1Address}`}
                     target="_blank"
                     rel="noopener noreferrer"

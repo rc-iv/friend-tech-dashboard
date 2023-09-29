@@ -102,17 +102,21 @@ export const fetchUserInfo = async (
     const url = `https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/user/${address}`;
     const response = await fetch(url);
     const user = await response.json();
-    const userData = user.userData;
-    userData.ethBalance = ethBalance;
+    if (user && user.userData) {
+      user.userData.ethBalance = ethBalance;
+    } else {
+      console.warn("userData is undefined in fetchUserInfo");
+      return;
+    }
     if (target === "trader")
       setTraderInfo((prevInfo) => ({
         ...prevInfo,
-        [address]: userData,
+        [address]: user.userData,
       }));
     else {
       setSubjectInfo((prevInfo) => ({
         ...prevInfo,
-        [address]: userData,
+        [address]: user.userData,
       }));
     }
   } catch (error) {

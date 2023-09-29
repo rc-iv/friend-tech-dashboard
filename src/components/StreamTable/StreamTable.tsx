@@ -156,18 +156,17 @@ const StreamTable: React.FC = () => {
     "https://base.blockpi.network/v1/rpc/8bfe5dae92f901117832b75d348793bda33fe2a5";
   const web3 = new Web3(providerUrl);
 
-  const fetchedAddresses = new Set(); // Add this line
+  const mainNetProvider =
+    "https://ethereum.blockpi.network/v1/rpc/c9061567b7574919c0022473a431e4d243daf4d5";
+  const web3Main = new Web3(mainNetProvider);
+  const fetchedAddresses = new Set();
 
   useEffect(() => {
     // if (!walletAddress) return; // uncomment to enable gating
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
-    const depositContractAddress = "0x4200000000000000000000000000000000000007";
-    const depositContract = new web3.eth.Contract(
-      bridgeAbi,
-      depositContractAddress
-    );
+    const depositContractAddress = "0x3154Cf16ccdb4C6d922629664174b904d80F2C35";
 
     //set poll interval to 3 seconds
     const pollInterval = 3000;
@@ -251,36 +250,32 @@ const StreamTable: React.FC = () => {
 
     const fetchDepositEvents = async () => {
       try {
-        const latestBlock = await web3.eth.getBlockNumber();
-        const fromBlock = latestBlock - BigInt(200);
+        const latestBlock = await web3Main.eth.getBlockNumber();
+        const fromBlock = latestBlock - BigInt(20);
         const fromBlockHex = web3.utils.toHex(fromBlock);
 
         // Define the event signature for 'RelayedMessage'
-        const eventSignature = web3.utils.sha3("RelayedMessage(bytes32)");
+        const eventSignature = web3Main.utils.sha3("RelayedMessage(bytes32)");
 
         // Create a filter for the event
         const eventFilterParams = {
           fromBlock: fromBlockHex,
           toBlock: "latest",
-          address: "0x4200000000000000000000000000000000000007", // Your contract address
-          topics: [eventSignature],
+          address: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
         };
 
-        const events = await web3.eth.getPastLogs(eventFilterParams as any);
+        const replacer = (key: any, value: any) => {
+          if (typeof value === "bigint") {
+            return value.toString() + "n"; // or just return value.toString() if you don't want to include the "n"
+          }
+          return value;
+        };
 
-        const relayMessageABI = [
-          { internalType: "uint256", name: "_nonce", type: "uint256" },
-          { internalType: "address", name: "_sender", type: "address" },
-          { internalType: "address", name: "_target", type: "address" },
-          { internalType: "uint256", name: "_value", type: "uint256" },
-          { internalType: "uint256", name: "_minGasLimit", type: "uint256" },
-          { internalType: "bytes", name: "_message", type: "bytes" },
-        ];
+        const events = await web3Main.eth.getPastLogs(eventFilterParams as any);
 
         const newDepositEvents = await Promise.all(
           events.map(async (event) => {
             const txnHash = (event as any).transactionHash;
-            const txn = await web3.eth.getTransaction(txnHash);
 
             // Skip processing if this event has already been processed
             if (processedDepositTxHashes.current.has(txnHash)) {
@@ -290,41 +285,33 @@ const StreamTable: React.FC = () => {
             // Mark this event as processed
             processedDepositTxHashes.current.add(txnHash);
 
-            const depositBlock = await web3.eth.getBlock(txn.blockNumber);
+            const depositBlock = (event as any).blockNumber;
+
+            const targetAddress = "0x" + (event as any).topics[2].slice(26);
+            const depositBlockDetails = await web3Main.eth.getBlock(
+              depositBlock
+            );
             const depositTimestamp = new Date(
-              Number(depositBlock.timestamp) * 1000
+              Number(depositBlockDetails.timestamp) * 1000
             ).toLocaleTimeString();
 
             // get eth value deposited
+            const txn = await web3Main.eth.getTransaction(txnHash);
             let depositAmountString = txn.value.toString(); // Convert BigInt to string
             let depositAmountNumber = parseFloat(depositAmountString); // Convert to Number for further calculations
             let depositAbs = Math.abs(
               parseFloat((depositAmountNumber / 1e18).toFixed(7))
             ).toString();
 
-            // Decode the message data
-            const decodedData = web3.eth.abi.decodeParameters(
-              relayMessageABI,
-              txn.input.slice(10)
-            );
-            const messageData = decodedData._message;
-            const targetAddress = "0x" + (messageData as any).slice(98, 138);
-
-            const l1Address = "0x" + (messageData as any).slice(34, 74);
+            const l1Address = "0x" + (event as any).topics[1].slice(26);
             let l1Balance = "0";
             try {
-              const mainNetProvider =
-                "https://ethereum.blockpi.network/v1/rpc/c9061567b7574919c0022473a431e4d243daf4d5";
-              const web3Main = new Web3(mainNetProvider);
               // user web3 to fetch eth balance of address
               const l1WeiBalance = await web3Main.eth.getBalance(l1Address);
               // convert to eth
               l1Balance = web3.utils.fromWei(l1WeiBalance, "ether");
               // truncate to 2 decimals
               l1Balance = parseFloat(l1Balance).toFixed(2).toString();
-              console.log(
-                `L1 Address: ${l1Address} -- L1 Balance: ${l1Balance}`
-              );
             } catch (error) {
               console.error(`Error fetching L1 balance: ${error}`);
             }
