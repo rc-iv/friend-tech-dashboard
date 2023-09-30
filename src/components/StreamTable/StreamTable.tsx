@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import Web3 from "web3";
 import { contractAbi, bridgeAbi } from "./contractAbi";
 // import { useWallet } from "../WalletContext/WalletContext"; // uncomment to enable gating
@@ -184,9 +184,9 @@ const StreamTable: React.FC = () => {
           pastEvents.map(async (event: any) => {
             const { returnValues, blockNumber, transactionHash } = event;
             const block = await web3.eth.getBlock(blockNumber);
-            let timestamp = new Date(
-              Number(block.timestamp) * 1000
-            ).toLocaleTimeString();
+            
+           // initialize timestamp to currnet time
+            let timestamp = new Date().toLocaleTimeString();
             if (block !== null) {
               // use current time as timestamp
               timestamp = new Date(
@@ -249,6 +249,7 @@ const StreamTable: React.FC = () => {
         );
 
         const filteredEvents = newEvents.filter((event) => event !== null);
+        
         // Update pendingEvents instead of events directly
         setPendingEvents((prevPendingEvents) => [
           ...prevPendingEvents,
@@ -340,13 +341,10 @@ const StreamTable: React.FC = () => {
               );
             }
 
-            // Assuming you have a way to get a timestamp for the deposit
-            const timestamp = new Date().toLocaleTimeString();
-
             // Create a new deposit event
             return {
               address: targetAddress,
-              depositAmount: depositAbs, // Replace with actual deposit amount
+              depositAmount: depositAbs, 
               timestamp: depositTimestamp,
               transactionHash: txnHash,
               l1Address,
@@ -389,7 +387,7 @@ const StreamTable: React.FC = () => {
     if (fullyLoadedEvents.length > 0) {
       setEvents((prevEvents) => {
         const combinedEvents = [...fullyLoadedEvents, ...prevEvents];
-        return combinedEvents.slice(0, 1000);
+        return combinedEvents.slice(0, 500);
       });
 
       setPendingEvents((prevPendingEvents) =>
@@ -420,7 +418,7 @@ const StreamTable: React.FC = () => {
           ...uniqueNewEvents,
           ...prevDepositEvents,
         ];
-        return combinedDepositEvents.slice(0, 1000);
+        return combinedDepositEvents.slice(0, 500);
       });
 
       setPendingDepositEvents((prevPendingDepositEvents) =>
@@ -485,7 +483,8 @@ const StreamTable: React.FC = () => {
   }, [filteredEvents]);
 
   // filter deposit events based on selected filters
-  const filteredDepositEvents = filterDeposits(
+  const filteredDepositEvents = useMemo(()=>{
+    return filterDeposits(
     depositEvents,
     depositorInfo,
     depositEthFilterMin,
@@ -493,7 +492,8 @@ const StreamTable: React.FC = () => {
     depositorPortfolioFilter,
     depositorETHFilter,
     depositorReciprocityFilter
-  );
+  );},[depositEvents, depositorInfo, depositEthFilterMin, depositEthFilterMax, depositorPortfolioFilter, depositorETHFilter, depositorReciprocityFilter]);
+
   const prevFilteredDepositEventsRef = useRef<DepositEvent[]>([]);
   useEffect(() => {
     // Check if filteredDepositEvents has new items compared to the previous snapshot

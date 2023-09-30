@@ -55,6 +55,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
   depositEvents,
   depositorInfo,
 }) => {
+  // console.log(`depositEvents: ${depositEvents}`);
   // Convert 12-hour formatted times to 24-hour format and sort them
   const sortedDepositEvents = [...depositEvents].sort((a, b) => {
     const convertTo24Hour = (time: any) => {
@@ -134,7 +135,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
         {/* Table Body */}
         <tbody className="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
           {sortedDepositEvents.map((event, index) => (
-            <tr key={index}>
+            <tr key={index} className="bg-grey-200">
               <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
                 <div className="flex">
                   <a
