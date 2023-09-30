@@ -203,7 +203,7 @@ const StreamTable: React.FC = () => {
               setFetchedAddresses,
               subjectInfo,
               traderInfo
-            ); // Fetch additional info for each subject
+            ).catch(err => console.error(`Error fetching user: ${err}`));; // Fetch additional info for each subject
             fetchUserInfo(
               web3,
               returnValues.trader,
@@ -214,7 +214,7 @@ const StreamTable: React.FC = () => {
               setFetchedAddresses,
               subjectInfo,
               traderInfo
-            ); // Fetch additional info for each trader
+            ).catch(err => console.error(`Error fetching trader: ${err}`)); // Fetch additional info for each trader
 
             let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
             let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
@@ -366,10 +366,10 @@ const StreamTable: React.FC = () => {
       }
     };
 
-    fetchEvents();
+    fetchEvents().catch(err => console.error(`Error fetching events: ${err}`)); // Fetch events on page load
     const poll = setInterval(fetchEvents, pollInterval);
 
-    fetchDepositEvents();
+    fetchDepositEvents().catch(err => console.error(`Error fetching deposit events: ${err}`)); // Fetch deposit events on page load
     const pollDeposit = setInterval(fetchDepositEvents, pollInterval);
 
     return () => {
