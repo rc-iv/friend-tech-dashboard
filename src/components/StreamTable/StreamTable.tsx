@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import Web3 from "web3";
 import { contractAbi, bridgeAbi } from "./contractAbi";
-// import { useWallet } from "../WalletContext/WalletContext"; // uncomment to enable gating
 import SalesTable from "../SalesTable/SalesTable";
 import DepositTable from "../DepositTable/DepositTable";
 import {
@@ -72,8 +71,10 @@ interface DepositTableProps {
   depositEvents: DepositEvent[];
   // Other props if necessary
 }
-
-const StreamTable: React.FC = () => {
+interface StreamTableProps {
+  isSubscriber: boolean;
+}
+const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   /* State Variables */
   const [events, setEvents] = useState<TradeEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<TradeEvent[]>([]);
@@ -96,8 +97,6 @@ const StreamTable: React.FC = () => {
   /* Refs */
   const processedDepositTxHashes = useRef(new Set());
 
-  // Uncomment to enable gating
-  // const { walletAddress } = useWallet();
 
   /* Filters */
   const [ethFilterMin, setEthFilterMin] = useState<number | null>(null);
@@ -165,14 +164,14 @@ const StreamTable: React.FC = () => {
   const web3Main = new Web3(mainNetProvider);
 
   useEffect(() => {
-    // if (!walletAddress) return; // uncomment to enable gating
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
-    const depositContractAddress = "0x3154Cf16ccdb4C6d922629664174b904d80F2C35";
-
-    //set poll interval to 3 seconds
-    const pollInterval = 3000;
+    let pollInterval = 30000;
+    if (isSubscriber) {
+      pollInterval = 3000;
+      console.log("Thanks for subscribing!");
+    }
 
     const fetchEvents = async () => {
       try {
@@ -184,8 +183,8 @@ const StreamTable: React.FC = () => {
           pastEvents.map(async (event: any) => {
             const { returnValues, blockNumber, transactionHash } = event;
             const block = await web3.eth.getBlock(blockNumber);
-            
-           // initialize timestamp to currnet time
+
+            // initialize timestamp to currnet time
             let timestamp = new Date().toLocaleTimeString();
             if (block !== null) {
               // use current time as timestamp
@@ -203,7 +202,7 @@ const StreamTable: React.FC = () => {
               setFetchedAddresses,
               subjectInfo,
               traderInfo
-            ).catch(err => console.error(`Error fetching user: ${err}`));; // Fetch additional info for each subject
+            ).catch((err) => console.error(`Error fetching user: ${err}`)); // Fetch additional info for each subject
             fetchUserInfo(
               web3,
               returnValues.trader,
@@ -214,7 +213,7 @@ const StreamTable: React.FC = () => {
               setFetchedAddresses,
               subjectInfo,
               traderInfo
-            ).catch(err => console.error(`Error fetching trader: ${err}`)); // Fetch additional info for each trader
+            ).catch((err) => console.error(`Error fetching trader: ${err}`)); // Fetch additional info for each trader
 
             let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
             let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
@@ -249,7 +248,7 @@ const StreamTable: React.FC = () => {
         );
 
         const filteredEvents = newEvents.filter((event) => event !== null);
-        
+
         // Update pendingEvents instead of events directly
         setPendingEvents((prevPendingEvents) => [
           ...prevPendingEvents,
@@ -263,7 +262,7 @@ const StreamTable: React.FC = () => {
     const fetchDepositEvents = async () => {
       try {
         const latestBlock = await web3Main.eth.getBlockNumber();
-        const fromBlock = latestBlock - BigInt(20);
+        const fromBlock = latestBlock - BigInt(100);
         const fromBlockHex = web3.utils.toHex(fromBlock);
 
         // Define the event signature for 'RelayedMessage'
@@ -344,7 +343,7 @@ const StreamTable: React.FC = () => {
             // Create a new deposit event
             return {
               address: targetAddress,
-              depositAmount: depositAbs, 
+              depositAmount: depositAbs,
               timestamp: depositTimestamp,
               transactionHash: txnHash,
               l1Address,
@@ -366,17 +365,21 @@ const StreamTable: React.FC = () => {
       }
     };
 
-    fetchEvents().catch(err => console.error(`Error fetching events: ${err}`)); // Fetch events on page load
+    fetchEvents().catch((err) =>
+      console.error(`Error fetching events: ${err}`)
+    ); // Fetch events on page load
     const poll = setInterval(fetchEvents, pollInterval);
 
-    fetchDepositEvents().catch(err => console.error(`Error fetching deposit events: ${err}`)); // Fetch deposit events on page load
+    fetchDepositEvents().catch((err) =>
+      console.error(`Error fetching deposit events: ${err}`)
+    ); // Fetch deposit events on page load
     const pollDeposit = setInterval(fetchDepositEvents, pollInterval);
 
     return () => {
       clearInterval(poll);
       clearInterval(pollDeposit);
     };
-  }, []); // add walletAddress as a dependency to enable gating
+  }, [isSubscriber]); 
 
   // useEffect for moving fully loaded events from pendingEvents to events
   useEffect(() => {
@@ -483,16 +486,25 @@ const StreamTable: React.FC = () => {
   }, [filteredEvents]);
 
   // filter deposit events based on selected filters
-  const filteredDepositEvents = useMemo(()=>{
+  const filteredDepositEvents = useMemo(() => {
     return filterDeposits(
+      depositEvents,
+      depositorInfo,
+      depositEthFilterMin,
+      depositEthFilterMax,
+      depositorPortfolioFilter,
+      depositorETHFilter,
+      depositorReciprocityFilter
+    );
+  }, [
     depositEvents,
     depositorInfo,
     depositEthFilterMin,
     depositEthFilterMax,
     depositorPortfolioFilter,
     depositorETHFilter,
-    depositorReciprocityFilter
-  );},[depositEvents, depositorInfo, depositEthFilterMin, depositEthFilterMax, depositorPortfolioFilter, depositorETHFilter, depositorReciprocityFilter]);
+    depositorReciprocityFilter,
+  ]);
 
   const prevFilteredDepositEventsRef = useRef<DepositEvent[]>([]);
   useEffect(() => {

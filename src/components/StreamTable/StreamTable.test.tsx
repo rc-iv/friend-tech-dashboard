@@ -31,12 +31,12 @@ describe('StreamTable Component', () => {
   });
 
   it('renders StreamTable component', () => {
-    render(<StreamTable />);
+    render(<StreamTable isSubscriber={false} />);
     expect(screen.getByText(/No events to display/i)).toBeInTheDocument();
   });
 
   it('should create a Web3 instance and subscribe to Trade events', () => {
-    render(<StreamTable />);
+    render(<StreamTable isSubscriber={true}/>);
     expect(Web3).toHaveBeenCalled();
     expect(mockSubscribe).toHaveBeenCalled();
   });

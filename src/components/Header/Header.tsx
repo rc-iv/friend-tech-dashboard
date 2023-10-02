@@ -1,10 +1,14 @@
-import React from "react";
-import MetamaskConnect from "../MetamaskConnect/MetamaskConnect";
+import React, { useEffect } from "react";
 import ftfeedLogo from "../../assets/images/ftech-dashboard-logo.png";
-const Header: React.FC = () => {
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+
+interface HeaderProps {
+  isSubscriber: boolean;
+}
+const Header: React.FC<HeaderProps> = ({ isSubscriber }) => {
   return (
     <div className="bg-black p-4 text-white flex justify-between items-center">
-      <div className="text-2xl font-bold flex">
+      <div className="text-2xl font-bold flex w-1/3">
         <img src={ftfeedLogo} alt="FT Feed Logo" className="w-10 h-10 mr-2" />
         Friend Tech Feed
         <a
@@ -22,7 +26,26 @@ const Header: React.FC = () => {
           </div>
         </a>
       </div>
-      <MetamaskConnect />
+      {isSubscriber ? (
+        <div className="text-sm text-gray-400">
+          <span className="text-[#c4ff0e] bg-gray-700 rounded-lg p-4 font-bold">
+            Thank you for owning an RCIV family key
+          </span>
+        </div>
+      ) : (
+        <div className="text-sm text-gray-400">
+          <span className="text-[#c4ff0e] bg-gray-700 rounded-lg p-4 font-bold">
+            <a href="https://www.friend.tech/trades/0x85f8c70a0ab0c948a3ed0236e2cc245719ae084c"
+            target = "_blank"
+            rel = "noopener noreferrer"
+            >Purchase my key or one of my holder's keys to access real time data.</a>
+          </span>
+        </div>
+      )}
+
+      <div>
+        <ConnectButton />
+      </div>
     </div>
   );
 };
