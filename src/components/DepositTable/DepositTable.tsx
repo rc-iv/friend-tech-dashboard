@@ -84,7 +84,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
           <tr>
             <th
               scope="col"
-              className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+              className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
             >
               Timestamp
             </th>
@@ -136,7 +136,7 @@ const DepositTable: React.FC<DepositTableProps> = ({
         <tbody className="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
           {sortedDepositEvents.map((event, index) => (
             <tr key={index} className="bg-gray-800">
-              <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
+              <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 <div className="flex">
                   <a
                     href={`https://etherscan.io/tx/${event.transactionHash}`}

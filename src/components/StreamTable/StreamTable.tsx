@@ -517,7 +517,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   }, [filteredDepositEvents, depositNotifications]);
 
   return (
-    <div className="flex-col text-white bg-black">
+    <div className="flex-col text-white bg-black overflow-x-hidden">
       <TableFilters
         ethFilterMin={ethFilterMin}
         setEthFilterMin={setEthFilterMin}
@@ -600,6 +600,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
           Deposits
         </button>
       </div>
+      <div className="overflow-x-auto">
       {selectedTab === "Deposits" ? (
         <DepositTable
           depositEvents={filteredDepositEvents}
@@ -612,6 +613,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
           traderInfo={traderInfo}
         />
       )}
+      </div>
     </div>
   );
 };

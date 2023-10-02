@@ -66,7 +66,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               <tr>
                 <th
                   scope="col"
-                  className="hidden md:table-cell py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                  className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                 >
                   Timestamp
                 </th>
@@ -145,7 +145,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                       (colorMap[baseColor] as any)[event.colorGradient]
                     }
                   >
-                    <td className="hidden md:table-cell px-4 py-4 text-sm font-medium whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                       <div className="flex">
                         <a
                           href={`https://basescan.org/tx/${event.transactionHash}`}
