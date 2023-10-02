@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import ftfeedLogo from "../../assets/images/ftech-dashboard-logo.png";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 

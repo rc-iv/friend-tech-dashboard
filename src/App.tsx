@@ -6,7 +6,6 @@ import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { configureChains, createConfig, WagmiConfig, useAccount } from "wagmi";
 import { base } from "wagmi/chains";
 import { publicProvider } from "wagmi/providers/public";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import axios from "axios";
 
 const { chains, publicClient } = configureChains([base], [publicProvider()]);
@@ -92,7 +91,7 @@ const AccountInfo: React.FC<AccountInfoProps> = ({
         console.log(`Found ${address} in subscriber list: ${found}`);
       setIsSubscriber(found);
     })();
-  }, [address, subscribers]); // Re-run the effect if either address or subscribers change
+  }, [address, subscribers, setIsSubscriber]); // Re-run the effect if either address or subscribers change
 
   useEffect(() => {
     console.log(`Is Subscriber: ${isSubscriber}`);

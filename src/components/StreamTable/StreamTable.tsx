@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import Web3 from "web3";
-import { contractAbi, bridgeAbi } from "./contractAbi";
+import { contractAbi } from "./contractAbi";
 import SalesTable from "../SalesTable/SalesTable";
 import DepositTable from "../DepositTable/DepositTable";
 import {
@@ -67,10 +67,7 @@ interface DepositEvent {
   l1Balance: string;
 }
 
-interface DepositTableProps {
-  depositEvents: DepositEvent[];
-  // Other props if necessary
-}
+
 interface StreamTableProps {
   isSubscriber: boolean;
 }
@@ -137,9 +134,9 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   const [depositorReciprocityFilter, setDepositorReciprocityFilter] = useState<
     number | null
   >(null);
-  const [depositorPriceMaxFilter, setDepositorPriceMaxFilter] = useState<
-    number | null
-  >(null);
+  // const [depositorPriceMaxFilter, setDepositorPriceMaxFilter] = useState<
+  //   number | null
+  // >(null);
 
   const [selfTxnFilter, setSelfTxnFilter] = useState<boolean>(false);
   const [supplyOneFilter, setSupplyOneFilter] = useState<boolean>(false);
@@ -265,21 +262,11 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         const fromBlock = latestBlock - BigInt(100);
         const fromBlockHex = web3.utils.toHex(fromBlock);
 
-        // Define the event signature for 'RelayedMessage'
-        const eventSignature = web3Main.utils.sha3("RelayedMessage(bytes32)");
-
         // Create a filter for the event
         const eventFilterParams = {
           fromBlock: fromBlockHex,
           toBlock: "latest",
           address: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
-        };
-
-        const replacer = (key: any, value: any) => {
-          if (typeof value === "bigint") {
-            return value.toString() + "n"; // or just return value.toString() if you don't want to include the "n"
-          }
-          return value;
         };
 
         const events = await web3Main.eth.getPastLogs(eventFilterParams as any);
@@ -483,7 +470,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         body: "A new item has been added to your filtered table.",
       });
     }
-  }, [filteredEvents]);
+  }, [filteredEvents, portfolioNotifications]);
 
   // filter deposit events based on selected filters
   const filteredDepositEvents = useMemo(() => {
@@ -527,7 +514,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         body: "A new item has been added to your filtered table.",
       });
     }
-  }, [filteredDepositEvents]);
+  }, [filteredDepositEvents, depositNotifications]);
 
   return (
     <div className="flex-col text-white bg-black">
