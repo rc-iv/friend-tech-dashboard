@@ -164,9 +164,9 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
     const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
-    let pollInterval = 10000;
+    let pollInterval = 30000;
     if (isSubscriber) {
-      pollInterval = 10000;
+      pollInterval = 30000;
       console.log("Thanks for subscribing!");
     }
 
