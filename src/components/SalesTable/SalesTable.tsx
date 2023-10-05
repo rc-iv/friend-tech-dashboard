@@ -20,6 +20,9 @@ interface User {
   portfolio?: Portfolio;
   holders?: Holders;
   displayPrice?: string;
+  followerCount?: string;
+  followingCount?: string;
+  tweetCount?: string;
 }
 
 interface Portfolio {
@@ -274,7 +277,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               })}
             </tbody>
           </table>
-          {filteredEvents.length === 0 && <p>No events to display</p>}
+          {filteredEvents.length === 0 && <p className="text-center text-xl">Initializing events</p>}
         </div>
       </div>
     </div>

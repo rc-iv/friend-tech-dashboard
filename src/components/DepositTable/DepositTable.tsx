@@ -28,6 +28,9 @@ interface User {
   portfolio: Portfolio;
   ethBalance?: string;
   holders?: Holders;
+  followerCount?: string;
+  followingCount?: string;
+  tweetCount?: string;
 }
 
 interface PortfolioUser {
@@ -93,6 +96,12 @@ const DepositTable: React.FC<DepositTableProps> = ({
               className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
             >
               Depositor
+            </th>
+            <th
+              scope="col"
+              className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+            >
+              Followers/Following (TweetCount)
             </th>
             <th
               scope="col"
@@ -208,6 +217,9 @@ const DepositTable: React.FC<DepositTableProps> = ({
                 </div>
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
+                {depositorInfo[event.address]?.followerCount + "/" + depositorInfo[event.address]?.followingCount + " (" + depositorInfo[event.address]?.tweetCount + ")"}
+              </td>
+              <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                 {parseFloat(event.depositAmount).toFixed(2)}
               </td>
               <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
@@ -255,6 +267,9 @@ const DepositTable: React.FC<DepositTableProps> = ({
           ))}
         </tbody>
       </table>
+      {sortedDepositEvents.length === 0 && (
+        <p className="text-center text-xl">Initializing deposits</p>
+      )}
     </div>
   );
 };

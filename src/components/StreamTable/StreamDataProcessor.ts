@@ -20,6 +20,9 @@ interface User {
   portfolio: Portfolio;
   ethBalance?: string;
   holders?: Holders;
+  followerCount?: string;
+  followingCount?: string;
+  tweetCount?: string;
 }
 
 interface Portfolio {
@@ -338,7 +341,7 @@ export const fetchTrades = async (
   const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
   const latestBlock = await web3.eth.getBlockNumber();
-  const fromBlock = latestBlock - BigInt(5);
+  const fromBlock = latestBlock - BigInt(3);
   const fromBlockHex = web3.utils.toHex(fromBlock);
   let rawEvents: any[] = [];
   try {

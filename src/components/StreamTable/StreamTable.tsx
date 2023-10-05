@@ -41,6 +41,9 @@ interface User {
   portfolio: Portfolio;
   ethBalance?: string;
   holders?: Holders;
+  followerCount?: string;
+  followingCount?: string;
+  tweetCount?: string;
 }
 
 interface PortfolioUser {
@@ -156,6 +159,8 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
     "https://ethereum.blockpi.network/v1/rpc/c9061567b7574919c0022473a431e4d243daf4d5";
   const web3Main = new Web3(mainNetProvider);
 
+
+  /* Use effect to fetch trades */
   useEffect(() => {
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
 
@@ -176,6 +181,8 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         for (const trade of newTrades) {
           const traderUserInfo = await fetchUser(trade.trader, web3);
           const subjectUserInfo = await fetchUser(trade.subject, web3);
+          console.log(JSON.stringify(traderUserInfo));
+          console.log(JSON.stringify(subjectUserInfo));
           setUserInfo((prevUserInfo) => ({
             [trade.trader]: traderUserInfo,
             [trade.subject]: subjectUserInfo,
@@ -208,7 +215,10 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
       clearInterval(poll);
     };
   }, [isSubscriber]);
+  /* End use effect to fetch trades */
 
+
+  /* Use effect to fetch deposit events */
   useEffect(() => {
     let pollInterval = 1200000;
     if (isSubscriber) {
@@ -221,7 +231,6 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         const fromBlock = latestBlock - BigInt(100);
         const fromBlockHex = web3.utils.toHex(fromBlock);
 
-        // Create a filter for the event
         const eventFilterParams = {
           fromBlock: fromBlockHex,
           toBlock: "latest",
@@ -322,6 +331,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
       clearInterval(pollDeposit);
     };
   }, [isSubscriber]);
+  /* End use effect to fetch deposit events */
 
   // useEffect for moving fully loaded events from pendingEvents to events also filters out duplicate events
   useEffect(() => {
@@ -484,7 +494,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   }, [filteredDepositEvents, depositNotifications]);
 
   return (
-    <div className="flex-col text-white bg-black overflow-x-hidden">
+    <div className="flex-col text-white bg-black overflow-x-hidden overflow-y-hidden">
       <TableFilters
         ethFilterMin={ethFilterMin}
         setEthFilterMin={setEthFilterMin}
@@ -567,7 +577,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
           Deposits
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-auto h-1/2">
         {selectedTab === "Deposits" ? (
           <DepositTable
             depositEvents={filteredDepositEvents}
