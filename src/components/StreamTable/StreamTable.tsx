@@ -181,8 +181,6 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         for (const trade of newTrades) {
           const traderUserInfo = await fetchUser(trade.trader, web3);
           const subjectUserInfo = await fetchUser(trade.subject, web3);
-          console.log(JSON.stringify(traderUserInfo));
-          console.log(JSON.stringify(subjectUserInfo));
           setUserInfo((prevUserInfo) => ({
             [trade.trader]: traderUserInfo,
             [trade.subject]: subjectUserInfo,
@@ -347,7 +345,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
 
     // Filter out events where either trader or subject information is missing
     const validNewEvents = uniqueNewEvents.filter((event) => {
-      return userInfo[event.trader] && userInfo[event.subject];
+      return userInfo[event.trader] && userInfo[event.subject] && userInfo[event.subject].twitterUsername !== "bot";
     });
 
     if (validNewEvents.length > 0) {
