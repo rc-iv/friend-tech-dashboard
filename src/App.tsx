@@ -50,17 +50,6 @@ const fetchHolders: any = async (
   return await fetchHolders(address, nextStart, accumulatedHolders);
 };
 
-const fetchSubscribers: any = async () => {
-  const rcivAddress = "0x85f8c70a0ab0c948a3ed0236e2cc245719ae084c";
-  const holders = await fetchHolders(rcivAddress);
-  let subscribers = [];
-  for (const holder of holders) {
-    const holderHolders = await fetchHolders(holder.address);
-    subscribers.push(...holderHolders);
-  }
-  console.log(`Found ${subscribers.length} subscribers`);
-  return subscribers;
-};
 
 interface AccountInfoProps {
   setIsSubscriber: React.Dispatch<React.SetStateAction<boolean>>;
@@ -74,30 +63,21 @@ const AccountInfo: React.FC<AccountInfoProps> = ({
   const addressObj = useAccount(); // I assume useAccount returns an object, hence naming it addressObj
   const address = addressObj?.address?.toLowerCase() || ""; // Safely extracting the address
 
-  // Use useMemo to memoize the result of fetchSubscribers
-  const subscribers = useMemo(() => {
-    return fetchSubscribers();
-  }, []); // Empty dependency array to ensure it only runs once
-
   useEffect(() => {
     // This will run when the component first mounts
     (async () => {
-      const subscriberList = await subscribers; // Wait for fetchSubscribers to complete
-
-      // Check if the address exists in the subscriber list
-      const found = subscriberList.some(
-        (subscriber: { address: string }) => subscriber.address === address
-      );
-        console.log(`Found ${address} in subscriber list: ${found}`);
-      setIsSubscriber(found);
+      if (!address) {
+        setIsSubscriber(false);
+        return; // If there's no address, return early
+      }
+      const subscriberCheck = await axios.get(`https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/subscriber/${address}`)
+      console.log(`subscriberCheck: ${JSON.stringify(subscriberCheck)}`);
+      console.log(`subscriberCheck.data.isSubscriber: ${subscriberCheck.data.isSubscriber}`);
+      setIsSubscriber(subscriberCheck.data.isSubscriber);
     })();
-  }, [address, subscribers, setIsSubscriber]); // Re-run the effect if either address or subscribers change
+  }, [address, setIsSubscriber]); // Re-run the effect if either address or subscribers change
 
-  useEffect(() => {
-    console.log(`Is Subscriber: ${isSubscriber}`);
-  }, [isSubscriber]); // Log the value whenever it changes
-
-  return null; // return null for now
+  return null;
 };
 
 const App: React.FC = () => {

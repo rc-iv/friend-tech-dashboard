@@ -32,8 +32,7 @@ interface Holders {
 
 interface SalesTableProps {
   filteredEvents: TradeEvent[];
-  traderInfo: Record<string, User>;
-  subjectInfo: Record<string, User>;
+  userInfo: Record<string, User>;
 }
 
 const colorMap = {
@@ -53,8 +52,7 @@ const colorMap = {
 
 const SalesTable: React.FC<SalesTableProps> = ({
   filteredEvents,
-  traderInfo,
-  subjectInfo,
+  userInfo,
 }) => {
   return (
     <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -164,22 +162,22 @@ const SalesTable: React.FC<SalesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                      {traderInfo[event.trader]?.ethBalance + " ETH"}
+                      {userInfo[event.trader]?.ethBalance + " ETH"}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                      {traderInfo[event.trader]?.portfolio?.portfolioValueETH +
+                      {userInfo[event.trader]?.portfolio?.portfolioValueETH +
                         " ETH"}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                       {(
                         (parseFloat(
-                          traderInfo[event.trader]?.holders
+                          userInfo[event.trader]?.holders
                             ?.reciprocity as string
                         ) ?? 0) * 100
                       ).toFixed(1) + "%"}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                      {parseFloat(traderInfo[event.trader]?.displayPrice as string) /
+                      {parseFloat(userInfo[event.trader]?.displayPrice as string) /
                         1e18 +
                         " ETH"}
                     </td>
@@ -190,18 +188,18 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         rel="noopener noreferrer"
                       >
                         {/* Display Twitter Username if available */}
-                        {traderInfo[event.trader]?.twitterUsername && (
+                        {userInfo[event.trader]?.twitterUsername && (
                           <div className="flex">
                             <a
                               href={`https://x.com/${
-                                traderInfo[event.trader]?.twitterUsername
+                                userInfo[event.trader]?.twitterUsername
                               }`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
                               <img
                                 className="rounded-full mr-1"
-                                src={traderInfo[event.trader]?.twitterPfpUrl}
+                                src={userInfo[event.trader]?.twitterPfpUrl}
                                 alt="X Avatar"
                                 width="24"
                                 height="24"
@@ -212,7 +210,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              {traderInfo[event.trader]?.twitterName?.slice(
+                              {userInfo[event.trader]?.twitterName?.slice(
                                 0,
                                 15
                               )}
@@ -226,18 +224,18 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                       {/* Display Twitter Username if available */}
-                      {subjectInfo[event.subject]?.twitterUsername && (
+                      {userInfo[event.subject]?.twitterUsername && (
                         <div className="flex">
                           <a
                             href={`https://x.com/${
-                              subjectInfo[event.subject].twitterUsername
+                              userInfo[event.subject].twitterUsername
                             }`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             <img
                               className="rounded-full mr-1"
-                              src={subjectInfo[event.subject]?.twitterPfpUrl}
+                              src={userInfo[event.subject]?.twitterPfpUrl}
                               alt="X Avatar"
                               width="24"
                               height="24"
@@ -248,7 +246,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {subjectInfo[event.subject]?.twitterName?.slice(
+                            {userInfo[event.subject]?.twitterName?.slice(
                               0,
                               15
                             )}
@@ -259,17 +257,17 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
                       {(
                         (parseFloat(
-                          subjectInfo[event.subject]?.holders
+                          userInfo[event.subject]?.holders
                             ?.reciprocity as string
                         ) ?? 0) * 100
                       ).toFixed(1) + "%"}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                      {subjectInfo[event.subject]?.portfolio
+                      {userInfo[event.subject]?.portfolio
                         ?.portfolioValueETH + " ETH"}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium whitespace-nowrap">
-                      {subjectInfo[event.subject]?.ethBalance + " ETH"}
+                      {userInfo[event.subject]?.ethBalance + " ETH"}
                     </td>
                   </tr>
                 );

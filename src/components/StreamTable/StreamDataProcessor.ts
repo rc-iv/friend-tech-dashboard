@@ -1,5 +1,6 @@
 // StreamDataProcessor.ts
 import Web3 from "web3";
+import { contractAbi } from "./contractAbi";
 
 interface User {
   twitterUsername: string;
@@ -48,15 +49,13 @@ interface TradeEvent {
 }
 
 interface DepositEvent {
-    address: string;
-    depositAmount: string;
-    timestamp: string;
-    transactionHash: string;
-    l1Address: string;
-    l1Balance: string;
-  }
-
-  
+  address: string;
+  depositAmount: string;
+  timestamp: string;
+  transactionHash: string;
+  l1Address: string;
+  l1Balance: string;
+}
 
 export const deepEqualArray = (arr1: any[], arr2: any[]) => {
   if (arr1.length !== arr2.length) return false;
@@ -73,25 +72,18 @@ export const deepEqualArray = (arr1: any[], arr2: any[]) => {
 export const fetchUserInfo = async (
   web3: Web3,
   address: string,
-  target: "subject" | "trader",
-  setSubjectInfo: React.Dispatch<React.SetStateAction<Record<string, any>>>,
-  setTraderInfo: React.Dispatch<React.SetStateAction<Record<string, any>>>,
+  setUserInfo: React.Dispatch<React.SetStateAction<Record<string, any>>>,
   fetchedAddresses: Set<any>,
   setFetchedAddresses: React.Dispatch<React.SetStateAction<Set<any>>>,
-  traderInfo: Record<string, User>,
-  subjectInfo: Record<string, User>
+  userInfo: Record<string, User>
 ) => {
   if (fetchedAddresses.has(address)) return;
   fetchedAddresses.add(address);
-  setTimeout(() => fetchedAddresses.delete(address), 60000);
+  setFetchedAddresses(fetchedAddresses);
 
   try {
     // Check if the user info for this address has already been fetched
-    const alreadyFetched =
-      (target === "trader" && traderInfo[address]) ||
-      (target === "subject" && subjectInfo[address]);
-
-    if (alreadyFetched) {
+    if (userInfo[address]) {
       return; // Skip fetching if already fetched
     }
 
@@ -111,78 +103,73 @@ export const fetchUserInfo = async (
       console.warn("userData is undefined in fetchUserInfo");
       return;
     }
-    if (target === "trader")
-      setTraderInfo((prevInfo) => ({
-        ...prevInfo,
-        [address]: user.userData,
-      }));
-    else {
-      setSubjectInfo((prevInfo) => ({
-        ...prevInfo,
-        [address]: user.userData,
-      }));
-    }
+    setUserInfo((prevInfo) => ({
+      [address]: user.userData,
+      ...prevInfo,
+    }));
   } catch (error) {
     console.error("Error fetching user info:", error);
   }
 };
 
 export const filterDeposits = (
-    events: DepositEvent[],
-    depositorInfo: Record<string, User>,
-    depositFilterMin: number | null,
-    depositFilterMax: number | null,
-    depositPortfolioFilter: number | null,
-    depositEthFilter: number | null,
-    depositReciprocityFilter: number | null,
-) =>{
-    let conditions: Array<(event: DepositEvent) => boolean> = [];
+  events: DepositEvent[],
+  depositorInfo: Record<string, User>,
+  depositFilterMin: number | null,
+  depositFilterMax: number | null,
+  depositPortfolioFilter: number | null,
+  depositEthFilter: number | null,
+  depositReciprocityFilter: number | null
+) => {
+  let conditions: Array<(event: DepositEvent) => boolean> = [];
 
-    if (depositFilterMin !== null) {
-        conditions.push((event) => parseFloat(event.depositAmount) >= depositFilterMin);
-    }
-    if (depositFilterMax !== null) {
-        conditions.push((event) => parseFloat(event.depositAmount) <= depositFilterMax);
-    }
-
-    if (depositPortfolioFilter) {
-        conditions.push((event) => {
-            const portfolioValue = parseFloat(
-                depositorInfo[event.address]?.portfolio?.portfolioValueETH || "0"
-            );
-            return portfolioValue >= depositPortfolioFilter;
-        });
-    }
-
-    if (depositReciprocityFilter) {
-        conditions.push((event) => {
-            const reciprocity = parseFloat(
-                depositorInfo[event.address]?.holders?.reciprocity || "0"
-            );
-            return reciprocity >= depositReciprocityFilter;
-        });
-    }
-
-    if (depositEthFilter) {
-        conditions.push((event) => {
-            const ethBalance = parseFloat(
-                depositorInfo[event.address]?.ethBalance || "0"
-            );
-            return ethBalance >= depositEthFilter;
-        });
-    }
-
-    // Apply all conditions
-    return events.filter((event) =>
-        conditions.every((condition) => condition(event))
+  if (depositFilterMin !== null) {
+    conditions.push(
+      (event) => parseFloat(event.depositAmount) >= depositFilterMin
     );
+  }
+  if (depositFilterMax !== null) {
+    conditions.push(
+      (event) => parseFloat(event.depositAmount) <= depositFilterMax
+    );
+  }
 
-}
+  if (depositPortfolioFilter) {
+    conditions.push((event) => {
+      const portfolioValue = parseFloat(
+        depositorInfo[event.address]?.portfolio?.portfolioValueETH || "0"
+      );
+      return portfolioValue >= depositPortfolioFilter;
+    });
+  }
+
+  if (depositReciprocityFilter) {
+    conditions.push((event) => {
+      const reciprocity = parseFloat(
+        depositorInfo[event.address]?.holders?.reciprocity || "0"
+      );
+      return reciprocity >= depositReciprocityFilter;
+    });
+  }
+
+  if (depositEthFilter) {
+    conditions.push((event) => {
+      const ethBalance = parseFloat(
+        depositorInfo[event.address]?.ethBalance || "0"
+      );
+      return ethBalance >= depositEthFilter;
+    });
+  }
+
+  // Apply all conditions
+  return events.filter((event) =>
+    conditions.every((condition) => condition(event))
+  );
+};
 
 export const filterEvents = (
   events: TradeEvent[],
-  subjectInfo: Record<string, User>,
-  traderInfo: Record<string, User>,
+  userInfo: Record<string, User>,
   selectedTab: string,
   ethFilterMin: number | null,
   ethFilterMax: number | null,
@@ -212,7 +199,7 @@ export const filterEvents = (
   if (traderPortfolioFilter) {
     conditions.push((event) => {
       const portfolioValue = parseFloat(
-        traderInfo[event.trader]?.portfolio?.portfolioValueETH || "0"
+       userInfo[event.trader]?.portfolio?.portfolioValueETH || "0"
       );
       return portfolioValue >= traderPortfolioFilter;
     });
@@ -221,7 +208,7 @@ export const filterEvents = (
   if (traderETHFilter) {
     conditions.push((event) => {
       const ethBalance = parseFloat(
-        traderInfo[event.trader]?.ethBalance || "0"
+        userInfo[event.trader]?.ethBalance || "0"
       );
       return ethBalance >= traderETHFilter;
     });
@@ -230,7 +217,7 @@ export const filterEvents = (
   if (traderReciprocityFilter) {
     conditions.push((event) => {
       const reciprocity = parseFloat(
-        traderInfo[event.trader]?.holders?.reciprocity || "0"
+        userInfo[event.trader]?.holders?.reciprocity || "0"
       );
       return reciprocity >= traderReciprocityFilter;
     });
@@ -238,7 +225,7 @@ export const filterEvents = (
 
   if (traderPriceMaxFilter) {
     conditions.push((event) => {
-      const price = parseFloat(traderInfo[event.trader]?.displayPrice || "0");
+      const price = parseFloat(userInfo[event.trader]?.displayPrice || "0");
       return price <= traderPriceMaxFilter;
     });
   }
@@ -246,7 +233,7 @@ export const filterEvents = (
   if (subjectPortfolioFilter) {
     conditions.push((event) => {
       const portfolioValue = parseFloat(
-        subjectInfo[event.subject]?.portfolio?.portfolioValueETH || "0"
+        userInfo[event.subject]?.portfolio?.portfolioValueETH || "0"
       );
       return portfolioValue >= subjectPortfolioFilter;
     });
@@ -255,7 +242,7 @@ export const filterEvents = (
   if (subjectETHFilter) {
     conditions.push((event) => {
       const ethBalance = parseFloat(
-        subjectInfo[event.subject]?.ethBalance || "0"
+        userInfo[event.subject]?.ethBalance || "0"
       );
       return ethBalance >= subjectETHFilter;
     });
@@ -264,7 +251,7 @@ export const filterEvents = (
   if (subjectReciprocityFilter) {
     conditions.push((event) => {
       const reciprocity = parseFloat(
-        subjectInfo[event.subject]?.holders?.reciprocity || "0"
+        userInfo[event.subject]?.holders?.reciprocity || "0"
       );
       return reciprocity >= subjectReciprocityFilter;
     });
@@ -277,12 +264,11 @@ export const filterEvents = (
   if (supplyOneFilter) {
     conditions.push((event) => {
       const subjectShareSupply = parseFloat(
-        subjectInfo[event.subject]?.shareSupply || "0"
+        userInfo[event.subject]?.shareSupply || "0"
       );
       return subjectShareSupply === 1;
     });
   }
-  
 
   // Apply all conditions
   return events.filter((event) =>
@@ -290,7 +276,7 @@ export const filterEvents = (
   );
 };
 
-export const fetchDepositor = async (address: string, web3: Web3) => {
+export const fetchUser = async (address: string, web3: Web3) => {
   try {
     const url = `https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/user/${address}`;
     const response = await fetch(url);
@@ -311,11 +297,104 @@ export const fetchDepositor = async (address: string, web3: Web3) => {
       user.userData.ethBalance = ethBalance;
     } else {
       console.warn("userData is undefined in fetchUserInfo");
-      return;
+      user.userData = {
+        twitterUsername: "bot",
+        twitterName: "bot",
+        twitterPfpUrl: "https://static.vecteezy.com/system/resources/previews/011/125/407/non_2x/3d-isolated-customer-service-robot-icon-free-png.png",
+        id: "bot",
+        address: address,
+        twitterUserId: "bot",
+        lastOnline: "bot",
+        lastMessageTime: "bot",
+        holderCount: "bot",
+        holdingCount: 0,
+        watchlistCount: "bot",
+        shareSupply: "bot",
+        displayPrice: 0,
+        lifetimeFeesCollectedInWei: "bot",
+        portfolio: {
+          holdings: [],
+          portfolioValueETH: 0,
+        },
+        ethBalance: ethBalance,
+        holders: {
+          reciprocity: 0,
+          holdings: {
+          },
+        },
+      }
     }
 
     return user.userData;
   } catch (error) {
     console.error("Error fetching user info:", error);
   }
+};
+
+export const fetchTrades = async (
+  contractAddress: string,
+  web3: Web3
+): Promise<TradeEvent[]> => {
+  const contract = new web3.eth.Contract(contractAbi, contractAddress);
+
+  const latestBlock = await web3.eth.getBlockNumber();
+  const fromBlock = latestBlock - BigInt(5);
+  const fromBlockHex = web3.utils.toHex(fromBlock);
+  let rawEvents: any[] = [];
+  try {
+    rawEvents = await (contract as any).getPastEvents("Trade", {
+      fromBlock: fromBlockHex,
+      toBlock: "latest",
+    });
+  } catch (error) {
+    console.error("Error fetching raw events:", error);
+  }
+
+  const newEvents = await Promise.all(
+    rawEvents.map(async (event: any) => {
+      const { returnValues, blockNumber, transactionHash } = event;
+
+      const blockDetails = await web3.eth.getBlock(blockNumber);
+
+      if (blockDetails === undefined) {
+        console.warn("blockDetails is undefined in fetchTrades");
+        return;
+      }
+      const timestamp = new Date(
+        Number(blockDetails.timestamp) * 1000
+      ).toLocaleTimeString();
+
+      let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
+      let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
+      let ethAbs = Math.abs(parseFloat((ethAmountNumber / 1e18).toFixed(7)));
+
+      // Color gradient coding based on size of trade
+      if (ethAbs === 0) {
+        return null;
+      }
+      let colorGradient = "500";
+      if (ethAbs < 0.1) {
+        colorGradient = "500";
+      } else if (ethAbs < 0.3) {
+        colorGradient = "700";
+      } else {
+        colorGradient = "900";
+      }
+
+      return {
+        trader: returnValues.trader,
+        subject: returnValues.subject,
+        transactionType: returnValues.isBuy ? "Buy" : "Sell",
+        shareAmount: returnValues.shareAmount.toString(),
+        ethAmount: ethAbs.toString(),
+        timestamp,
+        transactionHash,
+        colorGradient,
+      };
+    })
+  );
+  const newTradeEvents: TradeEvent[] = newEvents.filter(
+    (event): event is TradeEvent => event !== null
+  );
+  return newTradeEvents;
 };

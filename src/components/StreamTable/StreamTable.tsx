@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import Web3 from "web3";
-import { contractAbi } from "./contractAbi";
 import SalesTable from "../SalesTable/SalesTable";
 import DepositTable from "../DepositTable/DepositTable";
 import {
   deepEqualArray,
   fetchUserInfo,
   filterEvents,
-  fetchDepositor,
+  fetchUser,
   filterDeposits,
+  fetchTrades,
 } from "./StreamDataProcessor";
 import TableFilters from "../TableFilters/TableFilters";
 
@@ -67,7 +67,6 @@ interface DepositEvent {
   l1Balance: string;
 }
 
-
 interface StreamTableProps {
   isSubscriber: boolean;
 }
@@ -85,15 +84,12 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
     DepositEvent[]
   >([]);
 
-  const [subjectInfo, setSubjectInfo] = useState<Record<string, User>>({});
-  const [traderInfo, setTraderInfo] = useState<Record<string, User>>({});
-  const [depositorInfo, setDepositorInfo] = useState<Record<string, User>>({});
+  const [userInfo, setUserInfo] = useState<Record<string, User>>({});
 
   /* End State Variables */
 
   /* Refs */
   const processedDepositTxHashes = useRef(new Set());
-
 
   /* Filters */
   const [ethFilterMin, setEthFilterMin] = useState<number | null>(null);
@@ -162,100 +158,63 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
 
   useEffect(() => {
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
-    const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
-    let pollInterval = 30000;
+    let pollInterval = 1200000;
     if (isSubscriber) {
-      pollInterval = 30000;
+      pollInterval = 10000;
       console.log("Thanks for subscribing!");
     }
 
-    const fetchEvents = async () => {
+    const fetchNewTrades = async () => {
+      console.log("Fetching new trades...");
       try {
-        const pastEvents = await (contract as any).getPastEvents("Trade", {
-          fromBlock: "latest",
-        });
-
-        const newEvents = await Promise.all(
-          pastEvents.map(async (event: any) => {
-            const { returnValues, blockNumber, transactionHash } = event;
-            const block = await web3.eth.getBlock(blockNumber);
-
-            // initialize timestamp to currnet time
-            let timestamp = new Date().toLocaleTimeString();
-            if (block !== null) {
-              // use current time as timestamp
-              timestamp = new Date(
-                Number(block.timestamp) * 1000
-              ).toLocaleTimeString();
-            }
-            fetchUserInfo(
-              web3,
-              returnValues.subject,
-              "subject",
-              setSubjectInfo,
-              setTraderInfo,
-              fetchedAddresses,
-              setFetchedAddresses,
-              subjectInfo,
-              traderInfo
-            ).catch((err) => console.error(`Error fetching user: ${err}`)); // Fetch additional info for each subject
-            fetchUserInfo(
-              web3,
-              returnValues.trader,
-              "trader",
-              setSubjectInfo,
-              setTraderInfo,
-              fetchedAddresses,
-              setFetchedAddresses,
-              subjectInfo,
-              traderInfo
-            ).catch((err) => console.error(`Error fetching trader: ${err}`)); // Fetch additional info for each trader
-
-            let ethAmountString = returnValues.ethAmount.toString(); // Convert BigInt to string
-            let ethAmountNumber = parseFloat(ethAmountString); // Convert to Number for further calculations
-            let ethAbs = Math.abs(
-              parseFloat((ethAmountNumber / 1e18).toFixed(7))
-            );
-
-            // Color gradient coding based on size of trade
-            if (ethAbs === 0) {
-              return null;
-            }
-            let colorGradient = "500";
-            if (ethAbs < 0.1) {
-              colorGradient = "500";
-            } else if (ethAbs < 0.3) {
-              colorGradient = "700";
-            } else {
-              colorGradient = "900";
-            }
-
-            return {
-              trader: returnValues.trader,
-              subject: returnValues.subject,
-              transactionType: returnValues.isBuy ? "Buy" : "Sell",
-              shareAmount: returnValues.shareAmount.toString(),
-              ethAmount: ethAbs.toString(),
-              timestamp,
-              transactionHash,
-              colorGradient,
-            };
-          })
+        const newTrades: TradeEvent[] = await fetchTrades(
+          contractAddress,
+          web3
         );
 
-        const filteredEvents = newEvents.filter((event) => event !== null);
+        for (const trade of newTrades) {
+          const traderUserInfo = await fetchUser(trade.trader, web3);
+          const subjectUserInfo = await fetchUser(trade.subject, web3);
+          setUserInfo((prevUserInfo) => ({
+            [trade.trader]: traderUserInfo,
+            [trade.subject]: subjectUserInfo,
+            ...prevUserInfo,
+          }));
+        }
 
+        const existingTransactionHashes = new Set(
+          events.map((e) => e.transactionHash)
+        );
+        const filteredEvents = newTrades.filter(
+          (event) => !existingTransactionHashes.has(event.transactionHash)
+        );
         // Update pendingEvents instead of events directly
         setPendingEvents((prevPendingEvents) => [
           ...prevPendingEvents,
           ...filteredEvents,
         ]);
       } catch (error) {
-        console.error("Error fetching events:", error);
+        console.error("Error fetching trades:", error);
       }
     };
 
+    fetchNewTrades().catch((err) =>
+      console.error(`Error fetching events: ${err}`)
+    );
+
+    const poll = setInterval(fetchNewTrades, pollInterval);
+    return () => {
+      clearInterval(poll);
+    };
+  }, [isSubscriber]);
+
+  useEffect(() => {
+    let pollInterval = 1200000;
+    if (isSubscriber) {
+      pollInterval = 10000;
+      console.log("Thanks for subscribing!");
+    }
     const fetchDepositEvents = async () => {
       try {
         const latestBlock = await web3Main.eth.getBlockNumber();
@@ -313,14 +272,16 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
             } catch (error) {
               console.error(`Error fetching L1 balance: ${error}`);
             }
-            if (!depositorInfo[targetAddress]) {
+            if (!userInfo[targetAddress]) {
               // Fetch additional depositor information
-              const depositorUser = await fetchDepositor(targetAddress, web3);
+              let depositorUser = await fetchUser(targetAddress, web3);
 
-              setDepositorInfo((prevDepositorInfo) => ({
-                ...prevDepositorInfo,
-                [targetAddress]: depositorUser,
-              }));
+              if (depositorUser.twitterUsername !== "bot") {
+                setUserInfo((prevUserInfo) => ({
+                  [targetAddress]: depositorUser,
+                  ...prevUserInfo,
+                }));
+              }
             } else {
               console.log(
                 `Depositor info already fetched for ${targetAddress}`
@@ -352,44 +313,51 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
       }
     };
 
-    fetchEvents().catch((err) =>
-      console.error(`Error fetching events: ${err}`)
-    ); // Fetch events on page load
-    const poll = setInterval(fetchEvents, pollInterval);
-
     fetchDepositEvents().catch((err) =>
       console.error(`Error fetching deposit events: ${err}`)
     ); // Fetch deposit events on page load
     const pollDeposit = setInterval(fetchDepositEvents, pollInterval);
 
     return () => {
-      clearInterval(poll);
       clearInterval(pollDeposit);
     };
-  }, [isSubscriber]); 
+  }, [isSubscriber]);
 
-  // useEffect for moving fully loaded events from pendingEvents to events
+  // useEffect for moving fully loaded events from pendingEvents to events also filters out duplicate events
   useEffect(() => {
-    const fullyLoadedEvents = pendingEvents.filter((event) => {
-      return subjectInfo[event.subject] && traderInfo[event.trader];
+    // Create a Set containing all the transactionHashes of existing events
+    const existingTransactionHashes = new Set(
+      events.map((event) => event.transactionHash)
+    );
+
+    // Filter out any new events that already exist based on their transactionHash
+    const uniqueNewEvents = pendingEvents.filter(
+      (event) => !existingTransactionHashes.has(event.transactionHash)
+    );
+
+    // Filter out events where either trader or subject information is missing
+    const validNewEvents = uniqueNewEvents.filter((event) => {
+      return userInfo[event.trader] && userInfo[event.subject];
     });
 
-    if (fullyLoadedEvents.length > 0) {
+    if (validNewEvents.length > 0) {
+      // set events to add new events and slice it to 500
+
       setEvents((prevEvents) => {
-        const combinedEvents = [...fullyLoadedEvents, ...prevEvents];
+        const combinedEvents = [...validNewEvents, ...prevEvents];
         return combinedEvents.slice(0, 500);
       });
 
       setPendingEvents((prevPendingEvents) =>
-        prevPendingEvents.filter((event) => !fullyLoadedEvents.includes(event))
+        prevPendingEvents.filter((event) => !validNewEvents.includes(event))
       );
     }
-  }, [pendingEvents, subjectInfo, traderInfo]);
+  }, [pendingEvents, userInfo]);
 
   // use effect for moving fully loaded deposit events from pendingDepositEvents to depositEvents
   useEffect(() => {
     const fullyLoadedDepositEvents = pendingDepositEvents.filter((event) => {
-      return depositorInfo[event.address];
+      return userInfo[event.address];
     });
 
     if (fullyLoadedDepositEvents.length > 0) {
@@ -417,7 +385,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         )
       );
     }
-  }, [pendingDepositEvents, depositorInfo]);
+  }, [pendingDepositEvents, userInfo]);
 
   //notifications for new events based on filters
   useEffect(() => {
@@ -433,8 +401,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   // Filter events based on selected filters
   const filteredEvents = filterEvents(
     events,
-    subjectInfo,
-    traderInfo,
+    userInfo,
     selectedTab,
     ethFilterMin,
     ethFilterMax,
@@ -467,7 +434,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
       portfolioNotifications
     ) {
       new Notification("New item added!", {
-        body: "A new item has been added to your filtered table.",
+        body: "A new trade has been found.",
       });
     }
   }, [filteredEvents, portfolioNotifications]);
@@ -476,7 +443,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   const filteredDepositEvents = useMemo(() => {
     return filterDeposits(
       depositEvents,
-      depositorInfo,
+      userInfo,
       depositEthFilterMin,
       depositEthFilterMax,
       depositorPortfolioFilter,
@@ -485,7 +452,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
     );
   }, [
     depositEvents,
-    depositorInfo,
+    userInfo,
     depositEthFilterMin,
     depositEthFilterMax,
     depositorPortfolioFilter,
@@ -511,7 +478,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
       depositNotifications
     ) {
       new Notification("New item added!", {
-        body: "A new item has been added to your filtered table.",
+        body: "A new deposit has been added.",
       });
     }
   }, [filteredDepositEvents, depositNotifications]);
@@ -601,18 +568,14 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
         </button>
       </div>
       <div className="overflow-x-auto">
-      {selectedTab === "Deposits" ? (
-        <DepositTable
-          depositEvents={filteredDepositEvents}
-          depositorInfo={depositorInfo}
-        />
-      ) : (
-        <SalesTable
-          filteredEvents={filteredEvents}
-          subjectInfo={subjectInfo}
-          traderInfo={traderInfo}
-        />
-      )}
+        {selectedTab === "Deposits" ? (
+          <DepositTable
+            depositEvents={filteredDepositEvents}
+            depositorInfo={userInfo}
+          />
+        ) : (
+          <SalesTable filteredEvents={filteredEvents} userInfo={userInfo} />
+        )}
       </div>
     </div>
   );
