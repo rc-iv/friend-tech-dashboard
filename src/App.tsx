@@ -70,9 +70,7 @@ const AccountInfo: React.FC<AccountInfoProps> = ({
         setIsSubscriber(false);
         return; // If there's no address, return early
       }
-      const subscriberCheck = await axios.get(`https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/subscriber/${address}`)
-      console.log(`subscriberCheck: ${JSON.stringify(subscriberCheck)}`);
-      console.log(`subscriberCheck.data.isSubscriber: ${subscriberCheck.data.isSubscriber}`);
+      const subscriberCheck = await axios.get(`https://3lnsypz0we.execute-api.us-east-1.amazonaws.com/Prod/subscriber/${address}`);
       setIsSubscriber(subscriberCheck.data.isSubscriber);
     })();
   }, [address, setIsSubscriber]); // Re-run the effect if either address or subscribers change

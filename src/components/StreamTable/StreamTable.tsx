@@ -166,7 +166,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
 
     let pollInterval = 1200000;
     if (isSubscriber) {
-      pollInterval = 10000;
+      pollInterval = 30000;
       console.log("Thanks for subscribing!");
     }
 
@@ -220,7 +220,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   useEffect(() => {
     let pollInterval = 1200000;
     if (isSubscriber) {
-      pollInterval = 10000;
+      pollInterval = 100000;
       console.log("Thanks for subscribing!");
     }
     const fetchDepositEvents = async () => {
@@ -345,7 +345,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
 
     // Filter out events where either trader or subject information is missing
     const validNewEvents = uniqueNewEvents.filter((event) => {
-      return userInfo[event.trader] && userInfo[event.subject] && userInfo[event.subject].twitterUsername !== "bot";
+      return userInfo[event.trader] && userInfo[event.subject];
     });
 
     if (validNewEvents.length > 0) {
