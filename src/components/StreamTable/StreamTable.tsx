@@ -218,9 +218,9 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
 
   /* Use effect to fetch deposit events */
   useEffect(() => {
-    let pollInterval = 12000000;
+    let pollInterval = 120000;
     if (isSubscriber) {
-      pollInterval = 10000000;
+      pollInterval = 100000;
       console.log("Thanks for subscribing!");
     }
     const fetchDepositEvents = async () => {
