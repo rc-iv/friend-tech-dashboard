@@ -164,7 +164,7 @@ const StreamTable: React.FC<StreamTableProps> = ({ isSubscriber }) => {
   useEffect(() => {
     const contractAddress = "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4";
 
-    let pollInterval = 1200000;
+    let pollInterval = 30000;
     if (isSubscriber) {
       pollInterval = 30000;
       console.log("Thanks for subscribing!");
